@@ -135,11 +135,10 @@ async function _startSong(song: ISongMeta, diff: Difficulty): Promise<void> {
   songTime     = 0;
   hitNoteSet.clear();
 
-  // HUD labels
+  // HUD labels (set before toCountdown so they're ready when the scene shows)
   hudSong.textContent  = `▶ ${song.title}`;
   hudDiff.textContent  = diff.toUpperCase();
   _updateHUD();
-  ui.showHUD(false);
 
   // Always sync FSM context so Retry works from ANY start path
   // (Quick Test bypasses toDifficultySelect, so context.song would be null)

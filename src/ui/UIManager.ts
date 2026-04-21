@@ -64,7 +64,11 @@ export class UIManager {
       case 'MAIN_MENU':        this._showMainMenu(); break;
       case 'SONG_SELECT':      this._showSongSelect(); break;
       case 'DIFFICULTY_SELECT': this._showDifficultySelect(ctx.song!); break;
-      case 'COUNTDOWN':        /* countdown is rendered by game loop */ break;
+      case 'COUNTDOWN':
+        // Hide all UI overlays so the 3D highway is visible during countdown
+        this._hideAll();
+        this._showHUD(true); // player needs to see the highway + keys
+        break;
       case 'PLAYING':          this._hideAll(); this._showHUD(true); break;
       case 'PAUSED':           this._show('panel-pause'); break;
       case 'RESULTS':          this._showResults(ctx); break;
