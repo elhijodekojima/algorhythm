@@ -1,35 +1,167 @@
-# algorhythm
-Un juego de ritmo estilo Guitar Hero para teclado QWERTY. Música generada por IA, pianos extraídos/transcritos automáticamente a MIDI y motor desarrollado puramente mediante vibe coding. 🎹🤖
-🎹 Algorhythm
-El juego de ritmo donde la Inteligencia Artificial compone, transcribe y (casi) programa.
+# 🎹 Algorhythm
 
-VibeKeys es un experimento de desarrollo de videojuegos moderno. Nace de la idea de fusionar la generación musical por IA con el concepto de vibe coding (programación fluida asistida por IA) para crear una experiencia arcade directamente en tu teclado.
+> A 3D rhythm game in the style of Guitar Hero, played on a QWERTY keyboard as a piano. Music composed by AI, transcribed to MIDI automatically, rendered in Three.js — built 100% through vibe coding.
 
-🚀 El Concepto (AI Pipeline)
-Este juego no usa assets tradicionales. Todo el contenido musical sigue un flujo de trabajo impulsado por IA:
+[![Vibe Jam 2026](https://img.shields.io/badge/Vibe%20Jam-2026-blueviolet)](https://vibej.am/2026/)
+[![Built with Three.js](https://img.shields.io/badge/Three.js-3D%20Engine-black)](https://threejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Strict-blue)](https://www.typescriptlang.org/)
+[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black)](https://vercel.com/)
 
-Generación: Creación de las pistas musicales completas utilizando modelos como Suno o Udio.
+---
 
-Separación (Stem Isolation): Extracción de la pista de piano aislada del resto de la mezcla mediante modelos de separación de audio (ej. Demucs).
+## 🎮 Concept
 
-Transcripción (Audio-to-MIDI): Conversión del audio del piano aislado a un "chart" jugable (archivo MIDI/JSON) usando herramientas de transcripción automática (ej. Spotify Basic Pitch).
+**Algorhythm** is a browser-based 3D rhythm game where notes fall from the sky — timed precisely to AI-generated music — and you catch them by pressing the corresponding keys on your QWERTY keyboard, mapped as a piano.
 
-Desarrollo (Vibe Coding): Motor de juego construido fluyendo con asistentes de código (Antigravity).
+No downloads. No login. Just open the page and play.
 
-🎮 Características Principales
-QWERTY como Piano: Transforma las teclas de tu ordenador en un instrumento musical.
+---
 
-Sistema de "Charts" Automático: El juego lee la música y las marcas de tiempo generadas por la IA para hacer caer las notas con precisión.
+## 🤖 The AI Pipeline
 
-100% IA-Powered: Desde la banda sonora hasta el código base.
+Every track in the game is born entirely from artificial intelligence:
 
-🛠️ Stack Tecnológico
-Música: Suno / Udio
+```
+1. GENERATION      →  Full song created via Suno / Udio (AI music model)
+       ↓
+2. STEM ISOLATION  →  Piano track extracted using Demucs / LALAL.AI
+       ↓
+3. MIDI TRANSCRIPTION →  Audio-to-MIDI via Spotify Basic Pitch / AnthemScore
+       ↓
+4. CHART IMPORT    →  MIDI parsed in-browser → timestamps mapped to note lanes
+       ↓
+5. GAMEPLAY        →  3D note highway rendered in Three.js, synced to audio
+```
 
-Extracción de Audio: Demucs / LALAL.AI
+---
 
-Transcripción MIDI: Basic Pitch / AnthemScore
+## 🎹 QWERTY → Piano Mapping
 
-Motor del Juego: [Lenguaje/Motor que vayas a usar]
+Keys are mapped across two hands on the home row of the keyboard:
 
-Asistente de Código: Antigravity / Cursor
+| Key Lane | LEFT HAND         | RIGHT HAND        |
+|----------|-------------------|-------------------|
+| Fingers  | A · S · D · F · G | H · J · K · L · ; |
+| + Upper  | Q · W · E · R · T | Y · U · I · O · P |
+
+Each lane corresponds to a set of MIDI note pitches, remapped from the original piano chart.
+
+---
+
+## 🛠️ Tech Stack (Summary)
+
+| Layer              | Technology                          |
+|--------------------|-------------------------------------|
+| 3D Rendering       | Three.js                            |
+| Language           | TypeScript (strict)                 |
+| Build Tool         | Vite                                |
+| MIDI Parsing       | `midi-file` (browser-compatible)    |
+| Audio Playback     | Web Audio API / Howler.js           |
+| UI Framework       | Vanilla DOM (no React)              |
+| Hosting            | Vercel                              |
+| Version Control    | GitHub                              |
+
+> See `STACK.md` for the complete breakdown with justifications.
+
+---
+
+## 🚀 Local Development
+
+### Prerequisites
+
+- Node.js ≥ 18
+- npm ≥ 9
+
+### Install & Run
+
+```bash
+# Clone the repo
+git clone https://github.com/YOUR_USERNAME/algorhythm.git
+cd algorhythm
+
+# Install dependencies
+npm install
+
+# Start the dev server (hot reload)
+npm run dev
+```
+
+Open `http://localhost:5173` in your browser.
+
+### Build for Production
+
+```bash
+npm run build
+npm run preview  # preview the production build locally
+```
+
+---
+
+## ☁️ Deploy to Vercel
+
+### Option A — Automatic (GitHub Integration)
+
+1. Push the repo to GitHub.
+2. Import the project at [vercel.com/new](https://vercel.com/new).
+3. Vercel auto-detects Vite. Set:
+   - **Build Command:** `npm run build`
+   - **Output Directory:** `dist`
+4. Click **Deploy**. Done.
+
+### Option B — Vercel CLI
+
+```bash
+npm install -g vercel
+vercel
+# Follow the prompts — select the project root.
+```
+
+---
+
+## 🏆 Vibe Jam 2026
+
+This game is an official entry for [Cursor Vibe Jam 2026](https://vibej.am/2026/).
+
+> **90%+ of this codebase was written by AI (Antigravity / Cursor).**
+
+The required participation widget is included in `index.html`:
+
+```html
+<script async src="https://vibej.am/2026/widget.js"></script>
+```
+
+See `RULES.md` for full competition rules and participation requirements.
+
+**Submission deadline:** 1 MAY 2026 @ 13:37 UTC
+
+---
+
+## 📂 Project Structure
+
+```
+algorhythm/
+├── public/
+│   ├── tracks/          # MIDI + audio files per song
+│   └── assets/         # Textures, fonts
+├── src/
+│   ├── core/           # Game loop, clock, input manager
+│   ├── gfx/            # Three.js scene, camera, renderer, shaders
+│   ├── midi/           # MIDI parser, chart builder, note mapper
+│   ├── audio/          # Audio engine, sync manager
+│   ├── entities/       # Note, Highway, Lane, HUD
+│   ├── state/          # GameState machine (idle → playing → result)
+│   └── main.ts         # Entry point
+├── ANTIGRAVITY.md      # AI assistant system instructions
+├── MEMORY.md           # Decision log
+├── NEXT_STEPS.md       # Active backlog
+├── RULES.md            # Vibe Jam 2026 rules
+├── STACK.md            # Full tech stack documentation
+├── STYLE_LOCK.md       # Code conventions & visual style
+└── vite.config.ts
+```
+
+---
+
+## 🪪 License
+
+MIT — built with vibes. ✨
