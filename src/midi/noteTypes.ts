@@ -40,8 +40,12 @@ export const LIFE_DELTAS: Record<Difficulty, { hit: number; miss: number }> = {
   expert: { hit: 1.0,  miss: -2.0 },
 };
 
-/** Hit detection window centred on note.time, per GDD (single threshold) */
-export const HIT_WINDOW_SECONDS = 0.08; // ±80ms
+/**
+ * Hit detection window centred on note.time — same for all difficulties.
+ * ±120ms: fair and responsive without requiring pixel-perfect timing.
+ * (Guitar Hero "Good" window is ±116ms; osu! Normal is ±120ms)
+ */
+export const HIT_WINDOW_SECONDS = 0.12; // ±120ms
 
 /** Seconds before hit time that a note spawns (3-second runway per GDD §3.2) */
 export const LEAD_TIME = 3.0;

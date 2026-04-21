@@ -114,16 +114,29 @@ export class NoteHighway {
   }
 
   private _buildHitLine(): void {
-    // Glowing bar across all lanes at Z=0
-    const geo = new THREE.BoxGeometry(HIGHWAY_WIDTH + 0.5, 0.08, 0.15);
+    // Thicker glowing bar across all lanes at Z=0
+    const geo = new THREE.BoxGeometry(HIGHWAY_WIDTH + 1.0, 0.12, 0.25);
     const mat = new THREE.MeshStandardMaterial({
       color: 0xffffff,
       emissive: new THREE.Color(0xb36bff),
-      emissiveIntensity: 2.0,
+      emissiveIntensity: 3.0,
     });
     const bar = new THREE.Mesh(geo, mat);
-    bar.position.set(0, 0.04, HIT_LINE_Z);
+    bar.position.set(0, 0.06, HIT_LINE_Z);
     this.group.add(bar);
+
+    // Glow floor strip just behind the hit line
+    const stripGeo = new THREE.PlaneGeometry(HIGHWAY_WIDTH + 1.0, 1.5);
+    const stripMat = new THREE.MeshBasicMaterial({
+      color: 0xb36bff,
+      transparent: true,
+      opacity: 0.08,
+      depthWrite: false,
+    });
+    const strip = new THREE.Mesh(stripGeo, stripMat);
+    strip.rotation.x = -Math.PI / 2;
+    strip.position.set(0, 0.01, HIT_LINE_Z + 0.8);
+    this.group.add(strip);
   }
 
   private _buildLaneSeparators(): void {

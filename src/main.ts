@@ -255,8 +255,8 @@ const loop = new GameLoop({
       // Song complete
       if (songTime >= totalDuration) {
         _playing = false;
+        synth.cancelScheduled(); // stop all pre-scheduled audio
         const s = score;
-        // Mark song as completed in localStorage
         if (fsm.context.song) markCompleted(fsm.context.song.id);
         fsm.toResults(s.score, s.accuracy, s.stars);
         return;
@@ -265,8 +265,9 @@ const loop = new GameLoop({
       // Game Over
       if (score.isGameOver) {
         _playing = false;
-        const s          = score;
-        const progress   = (songTime / totalDuration) * 100;
+        synth.cancelScheduled(); // stop all pre-scheduled audio immediately
+        const s        = score;
+        const progress = (songTime / totalDuration) * 100;
         fsm.toGameOver(s.score, s.accuracy, progress);
         return;
       }
