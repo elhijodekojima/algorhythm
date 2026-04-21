@@ -53,7 +53,7 @@ export class UIManager {
   private _stopMenuMusic(): void {
     if (!this._music) return;
     this._music.pause();
-    // Do NOT reset currentTime so it resumes from same position
+    this._music.currentTime = 0; // Reset it so it starts from 0 when returning to menus
   }
 
   constructor(private readonly _cb: IUICallbacks) {
@@ -104,12 +104,14 @@ export class UIManager {
     const isGameplay = state === 'PLAYING' || state === 'COUNTDOWN';
     this._setCanvasCover(!isGameplay);
 
-    // Menu music: play during menu/results states, stop during gameplay + pause
-    const isMenu = state === 'MAIN_MENU' || state === 'SONG_SELECT' ||
-                   state === 'DIFFICULTY_SELECT' || state === 'RESULTS' ||
-                   state === 'GAME_OVER';
-    if (isMenu)     { this._playMenuMusic(); }
-    if (isGameplay || state === 'PAUSED') { this._stopMenuMusic(); }
+    // Menu music: play ONLY during menu states (main menu, song select)
+    // Stop during gameplay (COUNTDOWN/PLAYING/PAUSED) and post-game (RESULTS/GAME_OVER)
+    const isMenu = state === 'MAIN_MENU' || state === 'SONG_SELECT' || state === 'DIFFICULTY_SELECT';
+    if (isMenu) {
+      this._playMenuMusic();
+    } else {
+      this._stopMenuMusic();
+    }
 
     switch (state) {
       case 'MAIN_MENU':         this._showMainMenu(); break;
