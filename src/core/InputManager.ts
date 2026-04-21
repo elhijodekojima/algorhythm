@@ -1,6 +1,6 @@
 // @module src/core/InputManager.ts
 // SINGLETON — manages all keyboard input for the game loop.
-// Updated per GDD §3.1: 10 active keys are Q W E R V B U I O P
+// Updated per GDD §3.1: 10 active keys are Q W E R T Y U I O P
 
 import { LANE_KEYS } from '@midi/noteTypes';
 

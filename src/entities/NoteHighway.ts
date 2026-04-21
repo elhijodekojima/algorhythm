@@ -15,7 +15,7 @@ const HIGHWAY_WIDTH = LANE_COUNT * (LANE_WIDTH + LANE_GAP);
 const HIGHWAY_DEPTH = Math.abs(SPAWN_Z) + 20;
 
 /** Label displayed on each lane tile (GDD §3.1 order) */
-const LANE_LABELS = ['Q', 'W', 'E', 'R', 'V', 'B', 'U', 'I', 'O', 'P'];
+const LANE_LABELS = ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'];
 
 /** Neon lane colors cycling left→right */
 const LANE_COLORS: readonly number[] = [

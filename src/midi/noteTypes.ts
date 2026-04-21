@@ -2,15 +2,15 @@
 // Core data types for the chart/note system — shared across midi, entities, and state.
 
 /** The 10 active lane keys in order (grave → agudo), per GDD §3.1 */
-export const LANE_KEYS = ['KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyV', 'KeyB', 'KeyU', 'KeyI', 'KeyO', 'KeyP'] as const;
+export const LANE_KEYS = ['KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyT', 'KeyY', 'KeyU', 'KeyI', 'KeyO', 'KeyP'] as const;
 export type LaneKey = typeof LANE_KEYS[number];
 export const LANE_COUNT = LANE_KEYS.length; // 10
 
 /** Lane indices active per difficulty, per GDD §3.5 */
 export const DIFFICULTY_LANE_MASK: Record<Difficulty, readonly number[]> = {
-  easy:   [0, 1, 2, 6, 7, 8],           // Q W E  I O P
+  easy:   [0, 1, 2, 6, 7, 8],           // Q W E  U I O P
   medium: [0, 1, 2, 3, 6, 7, 8, 9],     // Q W E R  U I O P
-  expert: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], // all 10
+  expert: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], // all 10  (incl. T Y)
 };
 
 export type Difficulty = 'easy' | 'medium' | 'expert';
