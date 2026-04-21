@@ -52,24 +52,31 @@ export class UIManager {
     }
   }
 
-  private _show(id: PanelId, instant = false): void {
-    this._hideAll();
+  private _show(id: PanelId): void {
     const el = this._panels.get(id);
     if (!el) return;
 
     if (id === 'panel-session-book') {
-      // Use fade-in for the book panel
+      // Show book FIRST (before hiding other panels) to prevent the 3D canvas
+      // from flashing through during the transition.
+      // Both panels are visible briefly; the book is on top (later in DOM, same z-index).
       el.style.display = 'block';
       el.style.opacity = '0';
-      if (instant) {
+      requestAnimationFrame(() => requestAnimationFrame(() => {
         el.style.opacity = '1';
-      } else {
-        requestAnimationFrame(() => requestAnimationFrame(() => { el.style.opacity = '1'; }));
-      }
-    } else {
-      el.style.display = 'flex';
-      requestAnimationFrame(() => { el.style.opacity = '1'; });
+        // Hide other panels 50 ms in — they're covered by the book at this point
+        setTimeout(() => {
+          for (const [pid, panel] of this._panels) {
+            if (pid !== id) { panel.style.display = 'none'; panel.style.opacity = '0'; }
+          }
+        }, 50);
+      }));
+      return;
     }
+
+    this._hideAll();
+    el.style.display = 'flex';
+    requestAnimationFrame(() => { el.style.opacity = '1'; });
   }
 
   // ── State → UI ────────────────────────────────────────────────────────────
@@ -116,6 +123,7 @@ export class UIManager {
 
   // ── Session Book (song list + difficulty) ─────────────────────────────────
   private _showSessionBook(forSong?: ISongMeta): void {
+    this._showHUD(false); // ensure HUD is hidden before transition
     this._buildSongList();
 
     const rightPage   = document.getElementById('book-right-page');
