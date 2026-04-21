@@ -238,9 +238,11 @@ export class UIManager {
       item.dataset['id'] = song.id;
 
       item.innerHTML = `
-        <span class="session-num">Session #${song.sessionNum}</span>
+        <div class="song-header">
+          <span class="session-num">Session #${song.sessionNum}</span>
+          <span class="song-meta">${song.bpm} BPM · ${Math.floor(song.duration / 60)}:${String(song.duration % 60).padStart(2, '0')}</span>
+        </div>
         <span class="song-title">${song.title}</span>
-        <span class="song-meta" style="grid-column:2">${song.bpm} BPM · ${Math.floor(song.duration / 60)}:${String(song.duration % 60).padStart(2, '0')}</span>
         ${!unlocked ? `<span class="lock-hint">Complete Session #${song.sessionNum - 1} to unlock</span>` : ''}
       `;
 
