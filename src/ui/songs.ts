@@ -104,3 +104,25 @@ export function isUnlocked(song: ISongMeta): boolean {
 export function getSong(id: SongId): ISongMeta {
   return SONGS.find(s => s.id === id)!;
 }
+
+// ── High Score persistence ────────────────────────────────────────────────────
+export interface IHighScore {
+  score:      number;
+  difficulty: 'easy' | 'medium' | 'expert';
+  stars:      number;
+}
+
+export function saveHighScore(songId: SongId, hs: IHighScore): void {
+  const key     = `hs_${songId}`;
+  const current = getHighScore(songId);
+  if (!current || hs.score > current.score) {
+    localStorage.setItem(key, JSON.stringify(hs));
+  }
+}
+
+export function getHighScore(songId: SongId): IHighScore | null {
+  try {
+    const raw = localStorage.getItem(`hs_${songId}`);
+    return raw ? (JSON.parse(raw) as IHighScore) : null;
+  } catch { return null; }
+}

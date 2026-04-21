@@ -12,7 +12,7 @@ import { HitParticles }       from '@gfx/HitParticles';
 import { ScoreManager }       from '@state/ScoreManager';
 import { GameStateMachine }   from '@state/GameStateMachine';
 import { UIManager }          from '@ui/UIManager';
-import { getSong, markCompleted } from '@ui/songs';
+import { getSong, markCompleted, saveHighScore } from '@ui/songs';
 import {
   type INoteEvent,
   HIT_WINDOW_SECONDS,
@@ -39,7 +39,11 @@ const fsm = new GameStateMachine();
 // ── UI ────────────────────────────────────────────────────────────────────────
 const ui = new UIManager({
   onStartTestSong() { void _startSong(getSong('song-test'), 'easy'); },
-  onSongChosen(song: ISongMeta)     { fsm.toDifficultySelect(song); },
+  onSongChosen(song: ISongMeta) {
+    // Store in context first, then transition so UIManager gets the song ref
+    fsm.context.song = song;
+    fsm.toDifficultySelect(song);
+  },
   onDifficultyChosen(diff: Difficulty) { void _startSong(fsm.context.song!, diff); },
   onRetry()      { void _startSong(fsm.context.song!, fsm.context.difficulty!); },
   onMainMenu()   { _stopSong(); fsm.toMainMenu(); },
@@ -341,9 +345,17 @@ const loop = new GameLoop({
       // Song complete
       if (songTime >= totalDuration) {
         _playing = false;
-        synth.cancelScheduled(); // stop all pre-scheduled audio
+        synth.cancelScheduled();
         const s = score;
-        if (fsm.context.song) markCompleted(fsm.context.song.id);
+        // Persist high score
+        if (fsm.context.song && fsm.context.difficulty) {
+          markCompleted(fsm.context.song.id);
+          saveHighScore(fsm.context.song.id, {
+            score:      s.score,
+            difficulty: fsm.context.difficulty,
+            stars:      s.stars,
+          });
+        }
         fsm.toResults(s.score, s.accuracy, s.stars);
         return;
       }

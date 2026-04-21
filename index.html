@@ -94,33 +94,222 @@
       /* ═══════════════════════════════════════════════════════════════════
          MAIN MENU
       ═══════════════════════════════════════════════════════════════════ */
-      #panel-main-menu { gap: 0; }
-
-      .menu-actions { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 8px; }
-      .menu-row { display: flex; gap: 10px; }
-
-      .key-hint {
-        margin-top: 28px; font-size: 0.75rem; color: var(--text-muted);
-        letter-spacing: 0.05em;
+      #panel-main-menu {
+        background-image: url('/main_menu.png');
+        background-size: cover;
+        background-position: center top;
+        justify-content: flex-end; /* push content to bottom */
+        align-items: stretch;
+        padding: 0;
+        gap: 0;
       }
-      .key-hint kbd {
-        background: #1a1040; border: 1px solid var(--text-muted);
-        border-radius: 4px; padding: 1px 8px; font-family: monospace;
+      /* Dark gradient from bottom so text is always readable */
+      #panel-main-menu::after {
+        content: '';
+        position: absolute; inset: 0;
+        background: linear-gradient(to top,
+          rgba(5,4,15,0.95) 0%,
+          rgba(5,4,15,0.6)  35%,
+          rgba(5,4,15,0.0)  65%);
+        pointer-events: none;
+      }
+      /* Subtitles under the title (top-left, below where image renders "ALGORHYTHM") */
+      #mm-subtitles {
+        position: absolute;
+        top: 36%;
+        left: 36px;
+        z-index: 2;
+      }
+      #mm-subtitles .game-sub {
+        margin-bottom: 0;
+        font-size: 0.85rem;
+        color: rgba(232,224,255,0.75);
+        letter-spacing: 0.18em;
+        text-shadow: 0 0 12px rgba(0,0,0,0.8);
+      }
+      /* Bottom bar splits into left (key hints) and right (nav buttons) */
+      #mm-bottom {
+        position: absolute;
+        bottom: 0; left: 0; right: 0;
+        z-index: 2;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        padding: 28px 40px;
+      }
+      #mm-keyhints {
+        display: flex; flex-direction: column; gap: 5px;
+      }
+      #mm-keyhints p {
+        font-size: 0.72rem; color: rgba(180,160,255,0.7);
+        letter-spacing: 0.05em; margin: 0;
+      }
+      #mm-keyhints kbd {
+        background: rgba(26,16,64,0.8); border: 1px solid rgba(179,107,255,0.4);
+        border-radius: 4px; padding: 1px 7px; font-family: monospace;
+        font-size: 0.7rem;
+      }
+      #mm-nav {
+        display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
       }
 
       /* ═══════════════════════════════════════════════════════════════════
-         SONG SELECT
+         SESSION BOOK (merges old song-select + difficulty-select)
+         Background: start_session.png (open sheet music book on piano)
+         Layout: song list overlaid on left page, diff selector on right page
       ═══════════════════════════════════════════════════════════════════ */
-      #panel-song-select { gap: 0; }
+      #panel-session-book {
+        background-image: url('/start_session.png');
+        background-size: cover;
+        background-position: center;
+        /* Overlay is position:fixed inset:0, so children need position:absolute */
+        display: block !important; /* override flex to use absolute children */
+        opacity: 0;
+        transition: opacity 0.4s ease !important;
+      }
 
+      /* ── Left sidebar (outside book, to the left) ──────────────────── */
+      #book-nav-left {
+        position: absolute;
+        left: 1.5%;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex; flex-direction: column; align-items: flex-start; gap: 12px;
+        z-index: 2;
+      }
+      /* High score card */
+      #book-highscore {
+        background: rgba(5,4,15,0.82);
+        border: 1px solid var(--border-subtle);
+        border-radius: 6px;
+        padding: 10px 14px;
+        font-family: 'Orbitron', sans-serif;
+        font-size: 0.62rem;
+        line-height: 1.8;
+        max-width: 130px;
+        display: none; /* shown by JS when a song is selected */
+      }
+      #book-highscore .hs-score {
+        color: var(--neon-primary);
+        font-size: 0.85rem;
+        font-weight: 900;
+        letter-spacing: 0.06em;
+      }
+      #book-highscore .hs-label {
+        color: var(--text-muted);
+        font-size: 0.55rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+      }
+
+      /* ── Left book page — song list ────────────────────────────────── */
+      #book-left-page {
+        position: absolute;
+        left: 11%;  top: 5%;
+        width: 38%; height: 65%;
+        overflow-y: auto;
+        padding: 20px 16px;
+        z-index: 2;
+        /* Custom scrollbar */
+        scrollbar-width: thin;
+        scrollbar-color: rgba(179,107,255,0.3) transparent;
+      }
+      #book-left-page::-webkit-scrollbar { width: 4px; }
+      #book-left-page::-webkit-scrollbar-track { background: transparent; }
+      #book-left-page::-webkit-scrollbar-thumb { background: rgba(179,107,255,0.3); border-radius:2px; }
+
+      #book-left-page .section-label {
+        font-size: 0.6rem; color: #7a5fa0; margin-bottom: 12px;
+      }
+
+      /* Song items inside the book page - condensed versions */
+      #book-song-list { display: flex; flex-direction: column; gap: 6px; }
+      #book-song-list .song-item {
+        display: grid;
+        grid-template-columns: 52px 1fr;
+        grid-template-rows: auto auto;
+        column-gap: 10px;
+        padding: 10px 12px;
+        background: rgba(179,107,255,0.07);
+        border: 1px solid rgba(179,107,255,0.18);
+        color: #2a1a4a;
+        font-size: 0.82rem;
+      }
+      #book-song-list .song-item.unlocked:hover {
+        background: rgba(179,107,255,0.18);
+        border-color: var(--neon-primary);
+        box-shadow: 0 0 10px rgba(179,107,255,0.3);
+        color: #1a0a3a;
+      }
+      #book-song-list .song-item.selected {
+        background: rgba(179,107,255,0.25);
+        border-color: var(--neon-primary);
+        box-shadow: 0 0 12px rgba(179,107,255,0.4);
+      }
+      #book-song-list .session-num { font-size: 0.58rem; color: #7a5f9a; }
+      #book-song-list .song-title   { font-size: 0.8rem; color: #1a0a3a; font-weight: 700; }
+      #book-song-list .song-meta    { font-size: 0.65rem; color: #7a5f9a; grid-column: 2; }
+      #book-song-list .lock-hint    { font-size: 0.62rem; color: #c03050; grid-column: 1 / 3; margin-top: 2px; }
+
+      /* ── Right book page — difficulty selector ─────────────────────── */
+      #book-right-page {
+        position: absolute;
+        right: 11%; top: 5%;
+        width: 38%; height: 65%;
+        padding: 24px 16px;
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+      }
+      #book-right-page.hidden { display: none; }
+
+      #book-song-selected-title {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 1.1rem; font-weight: 900;
+        color: #1a0a3a;
+        text-align: center;
+        text-shadow: none;
+        letter-spacing: 0.06em;
+        margin-bottom: 8px;
+      }
+      #book-right-page .diff-btns {
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 0;
+        width: 100%;
+      }
+      #book-right-page .diff-btn {
+        width: 100%;
+        padding: 14px 20px;
+        background: rgba(5,4,15,0.15);
+        border-color: rgba(179,107,255,0.35);
+        color: #3a2060;
+      }
+      #book-right-page .diff-btn.easy:hover   { color: var(--neon-green);   border-color: var(--neon-green);   background: rgba(74,222,128,0.08); box-shadow: 0 0 16px rgba(74,222,128,0.25); }
+      #book-right-page .diff-btn.medium:hover { color: var(--neon-secondary); border-color: var(--neon-secondary); background: rgba(0,245,255,0.08); box-shadow: 0 0 16px rgba(0,245,255,0.25); }
+      #book-right-page .diff-btn.expert:hover { color: var(--neon-danger);  border-color: var(--neon-danger);  background: rgba(255,60,110,0.08); box-shadow: 0 0 16px rgba(255,60,110,0.25); }
+
+      /* ── Right sidebar (outside book, to the right) ─────────────────── */
+      #book-nav-right {
+        position: absolute;
+        right: 1.5%;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 2;
+      }
+      #book-nav-right.hidden { display: none; }
+
+      /* Song item - shared base styles for both panels (keep working) */
       .panel-box {
         background: var(--bg-panel); border: 1px solid var(--border-subtle);
         padding: 32px 36px; min-width: 520px; max-width: 600px;
         display: flex; flex-direction: column; align-items: stretch;
       }
-
       #song-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
-
       .song-item {
         display: grid; grid-template-columns: 80px 1fr auto;
         grid-template-rows: auto auto; column-gap: 16px;
@@ -131,7 +320,6 @@
       }
       .song-item.unlocked:hover { background: rgba(179,107,255,0.12); border-color: var(--neon-primary); box-shadow: 0 0 16px rgba(179,107,255,0.2); }
       .song-item.locked { opacity: 0.45; cursor: not-allowed; }
-
       .session-num {
         grid-column: 1; grid-row: 1;
         font-family: 'Orbitron', sans-serif; font-size: 0.65rem;
@@ -152,19 +340,8 @@
         font-size: 0.72rem; color: var(--neon-danger); margin-top: 4px;
       }
 
-      /* ═══════════════════════════════════════════════════════════════════
-         DIFFICULTY SELECT
-      ═══════════════════════════════════════════════════════════════════ */
-      #panel-difficulty-select { gap: 0; }
-
-      #diff-song-title {
-        font-family: 'Orbitron', sans-serif; font-size: 1.4rem; font-weight: 900;
-        color: var(--neon-primary); text-align: center; margin-bottom: 32px;
-        text-shadow: 0 0 16px var(--neon-primary);
-      }
-
+      /* diff-btn base (for pages outside the book too) */
       .diff-btns { display: flex; gap: 16px; margin-bottom: 28px; }
-
       .diff-btn {
         font-family: 'Orbitron', sans-serif; font-size: 0.85rem; font-weight: 700;
         padding: 20px 32px; border: 2px solid var(--border-subtle);
@@ -473,55 +650,61 @@
          PANEL: MAIN MENU
     ═══════════════════════════════════════════════════ -->
     <div id="panel-main-menu" class="overlay opaque" style="display:flex; opacity:1;">
-      <h1 class="game-title">ALGORHYTHM</h1>
-      <p class="game-sub">AI-powered rhythm &nbsp;·&nbsp; QWERTY as your piano</p>
-
-      <div class="menu-actions">
-        <button id="btn-start-session" class="btn">▶ &nbsp;Start Session</button>
-        <div class="menu-row">
-          <button id="btn-play-test" class="btn ghost sm">⚡ Quick Test</button>
-          <button id="btn-options-main" class="btn ghost sm">⚙ Options</button>
-        </div>
+      <!-- Subtitles sit below the ALGORHYTHM neon in the image -->
+      <div id="mm-subtitles">
+        <p class="game-sub">AI-Powered Rhythm &nbsp;·&nbsp; QWERTY as your piano</p>
       </div>
 
-      <p class="key-hint">Press <kbd>Q</kbd>–<kbd>P</kbd> to play &nbsp;·&nbsp; <kbd>ESC</kbd> to pause</p>
+      <div id="mm-bottom">
+        <!-- Bottom-left: keyboard hints -->
+        <div id="mm-keyhints">
+          <p>Press <kbd>Q</kbd>–<kbd>P</kbd> to play the piano</p>
+          <p><kbd>ESC</kbd> to pause during a session</p>
+        </div>
+
+        <!-- Bottom-right: navigation buttons (vertical list) -->
+        <div id="mm-nav">
+          <button id="btn-start-session" class="btn">▶ &nbsp;Start Session</button>
+          <button id="btn-play-test"     class="btn ghost sm">⚡ Quick Test</button>
+          <button id="btn-options-main"  class="btn ghost sm">⚙ Options</button>
+        </div>
+      </div>
     </div>
 
     <!-- ═══════════════════════════════════════════════
-         PANEL: SONG SELECT
+         PANEL: SESSION BOOK
+         Unified song-select + difficulty-select on
+         the background sheet-music book image.
     ═══════════════════════════════════════════════════ -->
-    <div id="panel-song-select" class="overlay glass">
-      <div class="panel-box">
-        <p class="section-label">Select Session</p>
-        <div id="song-list"></div>
+    <div id="panel-session-book" class="overlay">
+
+      <!-- Left sidebar: Back + optional high score card -->
+      <div id="book-nav-left">
         <button id="btn-back-to-main" class="btn ghost sm">← Back</button>
-      </div>
-    </div>
-
-    <!-- ═══════════════════════════════════════════════
-         PANEL: DIFFICULTY SELECT
-    ═══════════════════════════════════════════════════ -->
-    <div id="panel-difficulty-select" class="overlay glass">
-      <div class="panel-box" style="align-items:center;">
-        <p class="section-label">Choose Difficulty</p>
-        <p id="diff-song-title">Song Title</p>
-
-        <div class="diff-btns">
-          <button id="diff-btn-easy" class="diff-btn easy">
-            EASY
-            <small>6 keys · slow · forgiving</small>
-          </button>
-          <button id="diff-btn-medium" class="diff-btn medium">
-            MEDIUM
-            <small>8 keys · balanced</small>
-          </button>
-          <button id="diff-btn-expert" class="diff-btn expert">
-            EXPERT
-            <small>10 keys · full chart</small>
-          </button>
+        <div id="book-highscore">
+          <!-- Populated by JS: XXXXXX | Difficulty | ★★★★★★ -->
         </div>
+      </div>
 
-        <button id="btn-back-from-diff" class="btn ghost sm">← Back to Sessions</button>
+      <!-- Left page: song list -->
+      <div id="book-left-page">
+        <p class="section-label">Select Session</p>
+        <div id="book-song-list"></div>
+      </div>
+
+      <!-- Right page: difficulty selector (hidden until song chosen) -->
+      <div id="book-right-page" class="hidden">
+        <p id="book-song-selected-title">Song Title</p>
+        <div class="diff-btns">
+          <button id="book-diff-easy"   class="diff-btn easy">EASY<small>6 keys · slow · forgiving</small></button>
+          <button id="book-diff-medium" class="diff-btn medium">MEDIUM<small>8 keys · balanced</small></button>
+          <button id="book-diff-expert" class="diff-btn expert">EXPERT<small>10 keys · full chart</small></button>
+        </div>
+      </div>
+
+      <!-- Right sidebar: choose other session (hidden until song chosen) -->
+      <div id="book-nav-right" class="hidden">
+        <button id="btn-choose-other" class="btn ghost sm">↩ Choose other session</button>
       </div>
     </div>
 
