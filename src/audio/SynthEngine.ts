@@ -52,7 +52,24 @@ export class SynthEngine {
   scheduleSong(notes: ISynthNote[], startTime: number): void {
     this.cancelScheduled();
     for (const note of notes) {
-      this._playTone(note.freq, startTime + note.startTime, note.duration);
+      this._playTone(note.freq, startTime + note.startTime, Math.max(0.15, note.duration));
+    }
+  }
+
+  /**
+   * Schedule an INoteEvent[] directly — converts lanes to frequencies.
+   * Each lane in a chord gets its own tone. Call after AudioContext resume.
+   */
+  scheduleFromChart(
+    events: ReadonlyArray<{ time: number; duration: number; lanes: readonly number[] }>,
+    startTime: number,
+  ): void {
+    this.cancelScheduled();
+    for (const event of events) {
+      for (const lane of event.lanes) {
+        const freq = LANE_FREQS[lane] ?? 440;
+        this._playTone(freq, startTime + event.time, Math.max(0.15, event.duration));
+      }
     }
   }
 

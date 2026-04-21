@@ -62,6 +62,7 @@ export class ScoreManager {
   get score(): number { return this._score; }
   get combo(): number { return this._combo; }
   get life(): number { return this._life; } // 0–100
+  get multiplier(): number { return this._multiplier; }
 
   /** Percentage of notes successfully hit */
   get accuracy(): number {

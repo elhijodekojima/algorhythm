@@ -118,6 +118,12 @@ export class NotePool {
     this.active.push(primary);
   }
 
+  /** Mark the pool entry for a given note event as missed (fades red in 3D) */
+  markMissed(event: INoteEvent): void {
+    const entry = this.active.find(n => n.event === event);
+    if (entry) entry.missed = true;
+  }
+
   /** Call each frame to interpolate note positions */
   update(songTime: number, delta: number): void {
     for (let i = this.active.length - 1; i >= 0; i--) {
