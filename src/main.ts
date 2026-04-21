@@ -63,14 +63,34 @@ let _songStartCtxTime    = 0;
 
 // ── HUD DOM refs ──────────────────────────────────────────────────────────────
 const hudScore    = document.getElementById('hud-score')         as HTMLDivElement;
-const hudCombo    = document.getElementById('hud-combo')         as HTMLDivElement;
 const hudFeedback = document.getElementById('hud-feedback')      as HTMLDivElement;
 const hudSong     = document.getElementById('hud-song')          as HTMLDivElement;
 const hudDiff     = document.getElementById('hud-difficulty')    as HTMLDivElement;
-const hudProgress = document.getElementById('hud-progress-fill') as HTMLDivElement;
 const hudLife     = document.getElementById('hud-life-fill')     as HTMLDivElement;
 const hudLifeBar  = document.getElementById('hud-life-bar')      as HTMLDivElement;
+const hudProgFill = document.getElementById('hud-prog-fill')     as HTMLDivElement;
+const hudMulti    = document.getElementById('hud-multi-badge')   as HTMLDivElement;
+const hudStreak   = document.getElementById('hud-streak')        as HTMLDivElement;
+const hudStreakN  = document.getElementById('hud-streak-count')  as HTMLSpanElement;
+const hudDots     = document.getElementById('hud-multi-dots')    as HTMLDivElement;
 let feedbackTimer = 0;
+
+// ── Build the 10 multiplier progress dots ──────────────────────────────────────────────
+const _dots: HTMLSpanElement[] = [];
+for (let i = 0; i < 10; i++) {
+  const d = document.createElement('span');
+  d.className = 'mdot';
+  hudDots.appendChild(d);
+  _dots.push(d);
+}
+
+// Multiplier level definitions (matches COMBO_MULTIPLIERS in noteTypes.ts)
+const MULTI_LEVELS = [
+  { at: 30, level: 4, label: '×4' },
+  { at: 20, level: 3, label: '×3' },
+  { at: 10, level: 2, label: '×2' },
+  { at:  0, level: 1, label: '×1' },
+] as const;
 
 // ── Volume/Offset slider live labels ─────────────────────────────────────────
 const volSlider = document.getElementById('opt-volume') as HTMLInputElement;
@@ -150,18 +170,40 @@ function _stopSong(): void {
 // ── Game loop control flag ────────────────────────────────────────────────────
 let _playing = false;
 
-// ── HUD update ────────────────────────────────────────────────────────────────
+// ── HUD update ─────────────────────────────────────────────────────────────────
 function _updateHUD(): void {
   if (!score) return;
+  const combo = score.combo;
+  const multi = score.multiplier;
+
+  // Score
   hudScore.textContent = String(score.score).padStart(6, '0');
-  hudCombo.textContent = `COMBO ×${score.multiplier}`;
-  if (score.combo > 0) {
-    hudCombo.classList.add('pop');
-    setTimeout(() => hudCombo.classList.remove('pop'), 180);
+
+  // Multiplier badge — color driven by data-level attribute + CSS
+  const levelDef = MULTI_LEVELS.find(m => combo >= m.at) ?? MULTI_LEVELS[3]!;
+  hudMulti.textContent      = levelDef.label;
+  hudMulti.dataset['level'] = String(levelDef.level);
+
+  // Progress dots — 10 dots show progress within current multiplier band
+  // Band starts at 0, 10, 20, 30. When at x4 (30+), all 10 are lit.
+  const bandStart = multi === 4 ? 30 : (multi - 1) * 10;
+  const dotsLit   = multi === 4 ? 10 : Math.min(10, combo - bandStart);
+  const lvlStr    = String(levelDef.level);
+  for (let i = 0; i < 10; i++) {
+    const d = _dots[i]!;
+    d.dataset['level'] = lvlStr;
+    if (i < dotsLit) { d.classList.add('lit'); } else { d.classList.remove('lit'); }
   }
+
+  // Life bar
   const life = score.life;
-  hudLife.style.height = `${life}%`;
+  hudLife.style.height        = `${life}%`;
   hudLifeBar.dataset['state'] = life > 66 ? 'good' : life > 33 ? 'mid' : 'danger';
+
+  // Combo streak — only visible when >20
+  hudStreakN.textContent = String(combo);
+  if (combo > 20) { hudStreak.classList.add('visible'); }
+  else            { hudStreak.classList.remove('visible'); }
 }
 
 // ── Feedback flash ────────────────────────────────────────────────────────────
@@ -274,8 +316,8 @@ const loop = new GameLoop({
       particles.update(delta);
       highway.update(delta);
 
-      // Progress bar
-      hudProgress.style.width = `${Math.min(100, (songTime / totalDuration) * 100)}%`;
+      // Vertical progress bar (right column)
+      hudProgFill.style.height = `${Math.min(100, (songTime / totalDuration) * 100)}%`;
 
       // Feedback fade
       if (feedbackTimer > 0) {

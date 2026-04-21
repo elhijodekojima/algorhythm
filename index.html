@@ -297,55 +297,146 @@
         transition: opacity 0.4s ease;
       }
 
-      #hud-score {
-        position: absolute; top: 20px; right: 28px;
-        font-family: 'Orbitron', sans-serif; font-size: 2rem; font-weight: 900;
-        color: var(--neon-primary); text-shadow: 0 0 12px var(--neon-primary);
+      /* ── difficulty label (top center) ───────────────────────────────── */
+      #hud-difficulty {
+        position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+        font-family: 'Orbitron', sans-serif; font-size: 0.65rem; color: var(--text-muted);
+        letter-spacing: 0.2em; text-transform: uppercase;
       }
-      #hud-combo {
-        position: absolute; top: 66px; right: 28px;
-        font-family: 'Orbitron', sans-serif; font-size: 1rem; font-weight: 700;
-        color: var(--neon-secondary); text-shadow: 0 0 8px var(--neon-secondary);
-        transition: transform 0.15s cubic-bezier(.34,1.56,.64,1);
+      #hud-song {
+        position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+        font-size: 0.72rem; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase;
       }
-      #hud-combo.pop { transform: scale(1.4); }
 
+      /* ── feedback pop (center) ──────────────────────────────────────── */
       #hud-feedback {
-        position: absolute; bottom: 28%; left: 50%; transform: translateX(-50%);
-        font-family: 'Orbitron', sans-serif; font-size: 1.6rem; font-weight: 700;
+        position: absolute; bottom: 26%; left: 50%; transform: translateX(-50%);
+        font-family: 'Orbitron', sans-serif; font-size: 1.5rem; font-weight: 700;
         opacity: 0; transition: opacity 0.1s ease;
         text-shadow: 0 0 16px currentColor; pointer-events: none;
       }
-      #hud-song {
-        position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
-        font-size: 0.75rem; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase;
-      }
-      #hud-difficulty {
-        position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-        font-family: 'Orbitron', sans-serif; font-size: 0.7rem; color: var(--text-muted);
-        letter-spacing: 0.15em; text-transform: uppercase;
+
+      /* ────────────────────────────────────────────────────────────
+         LEFT COLUMN — Score + Multiplier + Progress dots
+         Positioned just left of the highway
+      ──────────────────────────────────────────────────────────── */
+      #hud-left-col {
+        position: absolute;
+        left: 20px;
+        bottom: 80px;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        min-width: 160px;
       }
 
-      /* Progress bar */
-      #hud-progress { position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: rgba(179,107,255,0.12); }
-      #hud-progress-fill { height: 100%; width: 0%; background: var(--neon-primary); box-shadow: 0 0 8px var(--neon-primary); transition: width 0.1s linear; }
+      /* Score */
+      #hud-score {
+        font-family: 'Orbitron', sans-serif; font-size: 2.4rem; font-weight: 900;
+        color: var(--neon-primary); text-shadow: 0 0 14px var(--neon-primary);
+        letter-spacing: 0.06em; line-height: 1;
+      }
 
-      /* Life bar */
+      /* Multiplier badge */
+      #hud-multi-badge {
+        font-family: 'Orbitron', sans-serif; font-size: 1.5rem; font-weight: 900;
+        letter-spacing: 0.06em; line-height: 1;
+        transition: color 0.2s ease, text-shadow 0.2s ease;
+      }
+      /* Level colors */
+      #hud-multi-badge[data-level="1"] { color: #8888aa; text-shadow: 0 0 6px #8888aa; }
+      #hud-multi-badge[data-level="2"] { color: var(--neon-secondary); text-shadow: 0 0 14px var(--neon-secondary); }
+      #hud-multi-badge[data-level="3"] { color: var(--neon-gold); text-shadow: 0 0 14px var(--neon-gold); }
+      #hud-multi-badge[data-level="4"] { color: #ff6bdf; text-shadow: 0 0 18px #ff6bdf, 0 0 40px #ff6bdf; }
+
+      /* 10 progress dots toward next multiplier */
+      #hud-multi-dots {
+        display: flex; gap: 5px; align-items: center;
+      }
+      .mdot {
+        width: 10px; height: 10px; border-radius: 50%;
+        background: #2a223a; border: 1px solid #4a3a6a;
+        transition: background 0.12s ease, box-shadow 0.12s ease;
+      }
+      .mdot.lit[data-level="1"] { background: #8888aa; box-shadow: 0 0 6px #8888aa; }
+      .mdot.lit[data-level="2"] { background: var(--neon-secondary); box-shadow: 0 0 8px var(--neon-secondary); }
+      .mdot.lit[data-level="3"] { background: var(--neon-gold); box-shadow: 0 0 8px var(--neon-gold); }
+      .mdot.lit[data-level="4"] { background: #ff6bdf; box-shadow: 0 0 10px #ff6bdf; }
+
+      /* Life bar — vertical, left of highway */
       #hud-life-container {
-        position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
+        position: absolute;
+        left: 20px;
+        top: 50%;
+        transform: translateY(-50%);
         display: flex; flex-direction: column; align-items: center; gap: 8px;
       }
-      #hud-life-label { font-family: 'Orbitron', sans-serif; font-size: 0.55rem; letter-spacing: 0.1em; color: var(--text-muted); writing-mode: vertical-rl; transform: rotate(180deg); }
-      #hud-life-bar { width: 12px; height: 200px; background: rgba(255,255,255,0.05); border: 1px solid rgba(179,107,255,0.3); border-radius: 6px; position: relative; overflow: hidden; }
+      #hud-life-label {
+        font-family: 'Orbitron', sans-serif; font-size: 0.5rem;
+        letter-spacing: 0.12em; color: var(--text-muted);
+        writing-mode: vertical-rl; transform: rotate(180deg);
+        margin-bottom: 4px;
+      }
+      #hud-life-bar {
+        width: 14px; height: 220px;
+        background: rgba(255,255,255,0.04); border: 1px solid rgba(179,107,255,0.25);
+        border-radius: 7px; position: relative; overflow: hidden;
+      }
       #hud-life-fill {
         position: absolute; bottom: 0; left: 0; width: 100%; height: 50%;
-        border-radius: 6px; background: var(--neon-secondary); box-shadow: 0 0 10px var(--neon-secondary);
+        border-radius: 7px;
         transition: height 0.15s ease, background 0.3s ease, box-shadow 0.3s ease;
       }
-      #hud-life-bar[data-state="good"]   #hud-life-fill { background: var(--neon-green);   box-shadow: 0 0 10px var(--neon-green);   }
-      #hud-life-bar[data-state="mid"]    #hud-life-fill { background: var(--neon-secondary); box-shadow: 0 0 10px var(--neon-secondary); }
-      #hud-life-bar[data-state="danger"] #hud-life-fill { background: var(--neon-danger); box-shadow: 0 0 10px var(--neon-danger); animation: blink-danger 0.4s ease-in-out infinite; }
+      #hud-life-bar[data-state="good"]   #hud-life-fill { background: var(--neon-green);   box-shadow: 0 0 12px var(--neon-green);   }
+      #hud-life-bar[data-state="mid"]    #hud-life-fill { background: var(--neon-secondary); box-shadow: 0 0 12px var(--neon-secondary); }
+      #hud-life-bar[data-state="danger"] #hud-life-fill { background: var(--neon-danger); box-shadow: 0 0 12px var(--neon-danger); animation: blink-danger 0.4s ease-in-out infinite; }
       @keyframes blink-danger { 0%, 100% { opacity:1; } 50% { opacity:0.3; } }
+
+      /* ────────────────────────────────────────────────────────────
+         RIGHT COLUMN — Progress bar + combo streak
+         Mirror of life bar on the right side
+      ──────────────────────────────────────────────────────────── */
+      #hud-right-col {
+        position: absolute;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex; flex-direction: column; align-items: center; gap: 8px;
+      }
+      #hud-progress-label {
+        font-family: 'Orbitron', sans-serif; font-size: 0.5rem;
+        letter-spacing: 0.12em; color: var(--text-muted);
+        writing-mode: vertical-rl; transform: rotate(180deg);
+        margin-bottom: 4px;
+      }
+      /* Vertical progress bar */
+      #hud-prog-bar {
+        width: 14px; height: 220px;
+        background: rgba(255,255,255,0.04); border: 1px solid rgba(179,107,255,0.25);
+        border-radius: 7px; position: relative; overflow: hidden;
+      }
+      #hud-prog-fill {
+        position: absolute; bottom: 0; left: 0; width: 100%; height: 0%;
+        background: var(--neon-primary); box-shadow: 0 0 10px var(--neon-primary);
+        border-radius: 7px;
+        transition: height 0.1s linear;
+      }
+
+      /* Combo streak counter — below progress bar, only when >20 */
+      #hud-streak {
+        display: flex; flex-direction: column; align-items: center; gap: 2px;
+        opacity: 0; transition: opacity 0.3s ease;
+      }
+      #hud-streak.visible { opacity: 1; }
+      #hud-streak-label {
+        font-family: 'Orbitron', sans-serif; font-size: 0.5rem;
+        letter-spacing: 0.1em; color: var(--text-muted); text-transform: uppercase;
+      }
+      #hud-streak-count {
+        font-family: 'Orbitron', sans-serif; font-size: 1.3rem; font-weight: 900;
+        color: var(--neon-gold); text-shadow: 0 0 10px var(--neon-gold);
+      }
 
       /* ─── HIT FLASH ──────────────────────────────────────────────────── */
       #hit-flash {
@@ -529,18 +620,37 @@
          HUD (visible only during PLAYING)
     ═══════════════════════════════════════════════════ -->
     <div id="hud">
-      <div id="hud-progress"><div id="hud-progress-fill"></div></div>
-
-      <div id="hud-score">000000</div>
-      <div id="hud-combo">COMBO ×1</div>
+      <!-- Top center labels -->
       <div id="hud-difficulty"></div>
       <div id="hud-feedback"></div>
       <div id="hud-song">Algorhythm</div>
 
+      <!-- LEFT COLUMN: Life bar (near center-left) -->
       <div id="hud-life-container">
         <span id="hud-life-label">LIFE</span>
         <div id="hud-life-bar" data-state="mid">
           <div id="hud-life-fill"></div>
+        </div>
+      </div>
+
+      <!-- LEFT BOTTOM: Score + Multiplier + Dots -->
+      <div id="hud-left-col">
+        <div id="hud-score">000000</div>
+        <div id="hud-multi-badge" data-level="1">×1</div>
+        <div id="hud-multi-dots">
+          <!-- 10 dots built by JS at init -->
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: Vertical progress + combo streak -->
+      <div id="hud-right-col">
+        <span id="hud-progress-label">PROGRESS</span>
+        <div id="hud-prog-bar">
+          <div id="hud-prog-fill"></div>
+        </div>
+        <div id="hud-streak">
+          <span id="hud-streak-label">STREAK</span>
+          <span id="hud-streak-count">0</span>
         </div>
       </div>
     </div>
