@@ -187,6 +187,7 @@ export class UIManager {
     this._bind('btn-back-from-diff',  () => this._cb.onSongSelect());
 
     // Pause
+    this._bind('pause-resume',    () => this._cb.onResume());
     this._bind('pause-retry',     () => this._cb.onRetry());
     this._bind('pause-mainmenu',  () => this._cb.onMainMenu());
     this._bind('pause-songselect',() => this._cb.onSongSelect());

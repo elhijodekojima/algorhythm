@@ -44,7 +44,7 @@ const ui = new UIManager({
   onRetry()      { void _startSong(fsm.context.song!, fsm.context.difficulty!); },
   onMainMenu()   { _stopSong(); fsm.toMainMenu(); },
   onSongSelect() { _stopSong(); fsm.toSongSelect(); },
-  onResume()     { fsm.toResumed(); },
+  onResume()     { _resumeGame(); },
   onVolumeChange(v: number) { synth.setMasterVolume(v); },
   onOffsetChange(_ms: number){ /* offset wired in future when AudioEngine is used */ },
 });
@@ -294,11 +294,25 @@ function _spawnNotes(): void {
   }
 }
 
+// ── Pause / Resume helpers ────────────────────────────────────────────────────────────
+function _pauseGame(): void {
+  // Suspend the AudioContext so all pre-scheduled oscillators freeze
+  void synth.audioContext.suspend();
+  fsm.toPaused();
+}
+
+function _resumeGame(): void {
+  // Resuming the AudioContext unfreezed currentTime naturally;
+  // songTime = audioCtx.currentTime - _songStartCtxTime stays accurate
+  void synth.audioContext.resume();
+  fsm.toResumed();
+}
+
 // ── ESC key — pause toggle ────────────────────────────────────────────────────
 window.addEventListener('keydown', (e: KeyboardEvent) => {
   if (e.code === 'Escape') {
-    if (fsm.state === 'PLAYING') { fsm.toPaused(); }
-    else if (fsm.state === 'PAUSED') { fsm.toResumed(); }
+    if (fsm.state === 'PLAYING') { _pauseGame(); }
+    else if (fsm.state === 'PAUSED') { _resumeGame(); }
   }
 });
 
