@@ -236,6 +236,18 @@ export class NotePool {
     slot.zLength      = 0.5;
   }
 
+  /**
+   * Full reset — releases ALL active notes and clears the active array.
+   * Call this when stopping a song (retry, main menu, game over) to ensure
+   * all pool slots are free for the next playthrough.
+   */
+  reset(): void {
+    for (const note of this.active) {
+      this._release(note);
+    }
+    this.active.length = 0;
+  }
+
   dispose(): void {
     for (const slot of this._pool) {
       slot.mesh.geometry.dispose();

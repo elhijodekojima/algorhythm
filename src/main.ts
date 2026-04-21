@@ -164,7 +164,7 @@ async function _startSong(song: ISongMeta, diff: Difficulty): Promise<void> {
 function _stopSong(): void {
   _playing = false;
   synth.cancelScheduled();
-  notePool.active.length = 0; // clear visual notes
+  notePool.reset(); // properly clear all pool slots (not just the active array)
 }
 
 // ── Game loop control flag ────────────────────────────────────────────────────

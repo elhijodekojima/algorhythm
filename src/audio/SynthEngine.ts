@@ -16,8 +16,8 @@ const LANE_FREQS: readonly number[] = [
   293.66, // D4  — W
   329.63, // E4  — E
   349.23, // F4  — R
-  392.00, // G4  — V
-  440.00, // A4  — B
+  392.00, // G4  — T
+  440.00, // A4  — Y
   493.88, // B4  — U
   523.25, // C5  — I
   587.33, // D5  — O
@@ -27,7 +27,8 @@ const LANE_FREQS: readonly number[] = [
 export class SynthEngine {
   private readonly _ctx: AudioContext;
   private readonly _masterGain: GainNode;
-  private _scheduledNotes: AudioBufferSourceNode[] = [];
+  /** All oscillators currently alive — used by cancelScheduled() */
+  private _scheduledNotes: OscillatorNode[] = [];
 
   constructor() {
     this._ctx = new AudioContext();
@@ -74,9 +75,9 @@ export class SynthEngine {
   }
 
   cancelScheduled(): void {
-    this._scheduledNotes.forEach(n => {
-      try { n.stop(); } catch (_) { /* already stopped */ }
-    });
+    for (const osc of this._scheduledNotes) {
+      try { osc.stop(); } catch (_) { /* already stopped */ }
+    }
     this._scheduledNotes = [];
   }
 
@@ -90,7 +91,7 @@ export class SynthEngine {
   }
 
   private _playTone(freq: number, when: number, duration: number, distorted = false): void {
-    const osc = this._ctx.createOscillator();
+    const osc  = this._ctx.createOscillator();
     const gain = this._ctx.createGain();
 
     osc.type = distorted ? 'sawtooth' : 'sine';
@@ -106,6 +107,15 @@ export class SynthEngine {
 
     osc.start(when);
     osc.stop(when + duration + 0.01);
+
+    // Track so cancelScheduled() can stop it before it finishes naturally
+    this._scheduledNotes.push(osc);
+
+    // Auto-remove from tracking list once the oscillator finishes
+    osc.onended = () => {
+      const idx = this._scheduledNotes.indexOf(osc);
+      if (idx !== -1) this._scheduledNotes.splice(idx, 1);
+    };
   }
 
   dispose(): void {
