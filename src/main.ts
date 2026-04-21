@@ -119,6 +119,11 @@ async function _startSong(song: ISongMeta, diff: Difficulty): Promise<void> {
   _updateHUD();
   ui.showHUD(false);
 
+  // Always sync FSM context so Retry works from ANY start path
+  // (Quick Test bypasses toDifficultySelect, so context.song would be null)
+  fsm.context.song       = song;
+  fsm.context.difficulty = diff;
+
   // Countdown
   fsm.toCountdown(diff);
   await _runCountdown();
