@@ -8,6 +8,7 @@ import { InputManager }       from '@core/InputManager';
 import { NoteHighway }        from '@entities/NoteHighway';
 import { NotePool }           from '@entities/NotePool';
 import { SynthEngine }        from '@audio/SynthEngine';
+import { HitParticles }       from '@gfx/HitParticles';
 import { ScoreManager }       from '@state/ScoreManager';
 import { GameStateMachine }   from '@state/GameStateMachine';
 import { UIManager }          from '@ui/UIManager';
@@ -29,7 +30,8 @@ const input    = InputManager.getInstance();
 // ── Entities ──────────────────────────────────────────────────────────────────
 const highway  = new NoteHighway(scene);
 const notePool = new NotePool(scene);
-const synth    = new SynthEngine();
+const synth     = new SynthEngine();
+const particles = new HitParticles(scene);
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const fsm = new GameStateMachine();
@@ -170,6 +172,15 @@ function _feedback(text: string, color: string): void {
   feedbackTimer = 0.7;
 }
 
+// ── Screen flash (CSS radial glow at bottom of screen) ────────────────────────
+const _flashEl = document.getElementById('hit-flash')!;
+function _screenFlash(type: 'hit' | 'miss', hexColor = '#b36bff'): void {
+  _flashEl.style.setProperty('--flash-color', hexColor + '38'); // ~22% alpha
+  _flashEl.classList.remove('flash-hit', 'flash-miss');
+  void _flashEl.offsetWidth; // force reflow to restart animation
+  _flashEl.classList.add(type === 'hit' ? 'flash-hit' : 'flash-miss');
+}
+
 // ── Hit / Miss detection ──────────────────────────────────────────────────────
 function _detectHits(lanes: number[]): void {
   if (lanes.length === 0 || !score) return;
@@ -189,14 +200,25 @@ function _detectHits(lanes: number[]): void {
         ? score.registerChordHit(note.lanes.length)
         : score.registerHit();
       note.lanes.forEach(l => { highway.flashLane(l); synth.playLaneTone(l, Math.max(0.15, note.duration)); });
-      _feedback(`+${pts}`, '#b36bff');
+
+      // Particles + screen flash on hit
+      particles.spawnChordBurst(note.lanes);
+      const laneColor = ['#b36bff','#00f5ff','#ff3c6e','#ffd166','#7efff5','#ff6eb4','#6bffb3','#b3ff6b','#ff9f6b','#6b9fff'][note.lanes[0] ?? 0] ?? '#b36bff';
+      _screenFlash('hit', laneColor);
+
+      _feedback(`+${pts}`, laneColor);
       _updateHUD();
       return;
     }
   }
 
-  // Input extra miss
-  lanes.forEach(l => { synth.playMissTone(l); highway.flashLaneMiss(l); });
+  // Input without matching note — brief miss sparks per lane
+  lanes.forEach(l => {
+    synth.playMissTone(l);
+    highway.flashLaneMiss(l);
+    particles.spawnBurst(l, true);
+  });
+  _screenFlash('miss', '#ff3c6e');
   score.registerMiss();
   _feedback('MISS', '#ff3c6e');
   _updateHUD();
@@ -210,7 +232,10 @@ function _checkOmitted(): void {
     if (!hitNoteSet.has(hitCheckIdx)) {
       score.registerMiss();
       notePool.markMissed(note);
-      note.lanes.forEach(l => highway.flashLaneMiss(l));
+      note.lanes.forEach(l => {
+        highway.flashLaneMiss(l);
+        particles.spawnBurst(l, true); // small red spark on miss
+      });
       _feedback('MISS', '#ff3c6e');
       _updateHUD();
     }
@@ -246,6 +271,7 @@ const loop = new GameLoop({
       _detectHits(input.getJustPressedLanes());
 
       notePool.update(songTime, delta);
+      particles.update(delta);
       highway.update(delta);
 
       // Progress bar
