@@ -205,7 +205,7 @@
       /* ── Left book page — song list ────────────────────────────────── */
       #book-left-page {
         position: absolute;
-        left: 13%;  top: 5%;
+        left: 17%;  top: 5%;
         width: 26%; height: 65%;
         overflow-y: auto;
         padding: 20px 14px;
@@ -254,15 +254,16 @@
       /* ── Right book page — difficulty selector ─────────────────────── */
       #book-right-page {
         position: absolute;
-        right: 13%; top: 5%;
-        width: 26%; height: 65%;
-        padding: 24px 14px;
+        right: 17%; top: 5%;
+        width: 26%; height: 60%;
+        padding: 0 14px;
         z-index: 2;
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
-        gap: 20px;
+        justify-content: flex-start;  /* top-aligned to match first song */
+        gap: 12px;
+        padding-top: 46px; /* ~matches section-label + first song gap on left page */
       }
       #book-right-page.hidden { display: none; }
 
@@ -644,6 +645,13 @@
 
   <body>
     <canvas id="game-canvas"></canvas>
+
+    <!-- Canvas cover: sits above the 3D canvas (z-index:1) but below overlays (z-index:20).
+         Always dark during menu states; hidden only during gameplay so the 3D scene shows. -->
+    <div id="canvas-cover" style="position:fixed;inset:0;z-index:1;background:#05040f;"></div>
+
+    <!-- Menu background music (looped, stops when gameplay starts) -->
+    <audio id="menu-music" src="/menu_music.mp3" loop preload="auto"></audio>
 
     <!-- ═══════════════════════════════════════════════
          PANEL: MAIN MENU

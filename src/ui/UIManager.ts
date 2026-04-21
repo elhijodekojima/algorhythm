@@ -37,6 +37,25 @@ export class UIManager {
   private readonly _optionsPreviousPanel: PanelId[] = [];
   private _selectedSong: ISongMeta | null = null;
 
+  // ── Canvas cover & menu music ─────────────────────────────────────────────
+  private readonly _cover  = document.getElementById('canvas-cover') as HTMLDivElement;
+  private readonly _music  = document.getElementById('menu-music')   as HTMLAudioElement;
+
+  private _setCanvasCover(visible: boolean): void {
+    if (this._cover) this._cover.style.display = visible ? 'block' : 'none';
+  }
+
+  private _playMenuMusic(): void {
+    if (!this._music || !this._music.paused) return;
+    this._music.play().catch(() => { /* browser autoplay blocked — will retry on next interaction */ });
+  }
+
+  private _stopMenuMusic(): void {
+    if (!this._music) return;
+    this._music.pause();
+    // Do NOT reset currentTime so it resumes from same position
+  }
+
   constructor(private readonly _cb: IUICallbacks) {
     for (const id of PANEL_IDS) {
       const el = document.getElementById(id);
@@ -81,6 +100,17 @@ export class UIManager {
 
   // ── State → UI ────────────────────────────────────────────────────────────
   onStateChange(state: GameStateId, ctx: IGameContext): void {
+    // Canvas cover: hide only during active gameplay so 3D scene shows
+    const isGameplay = state === 'PLAYING' || state === 'COUNTDOWN';
+    this._setCanvasCover(!isGameplay);
+
+    // Menu music: play during menu/results states, stop during gameplay + pause
+    const isMenu = state === 'MAIN_MENU' || state === 'SONG_SELECT' ||
+                   state === 'DIFFICULTY_SELECT' || state === 'RESULTS' ||
+                   state === 'GAME_OVER';
+    if (isMenu)     { this._playMenuMusic(); }
+    if (isGameplay || state === 'PAUSED') { this._stopMenuMusic(); }
+
     switch (state) {
       case 'MAIN_MENU':         this._showMainMenu(); break;
       case 'SONG_SELECT':       this._showSessionBook(); break;
