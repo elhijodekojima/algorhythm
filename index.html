@@ -162,10 +162,9 @@
         background-image: url('/start_session.png');
         background-size: cover;
         background-position: center;
-        /* Overlay is position:fixed inset:0, so children need position:absolute */
-        display: block !important; /* override flex to use absolute children */
+        /* No display/flex overrides here — _show()/_hideAll() manage display via inline styles */
         opacity: 0;
-        transition: opacity 0.4s ease !important;
+        transition: opacity 0.4s ease;
       }
 
       /* ── Left sidebar (outside book, to the left) ──────────────────── */
@@ -676,7 +675,7 @@
          Unified song-select + difficulty-select on
          the background sheet-music book image.
     ═══════════════════════════════════════════════════ -->
-    <div id="panel-session-book" class="overlay">
+    <div id="panel-session-book" class="overlay" style="display:none;">
 
       <!-- Left sidebar: Back + optional high score card -->
       <div id="book-nav-left">
