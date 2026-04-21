@@ -40,6 +40,7 @@ export class UIManager {
   // ── Canvas cover & menu music ─────────────────────────────────────────────
   private readonly _cover  = document.getElementById('canvas-cover') as HTMLDivElement;
   private readonly _music  = document.getElementById('menu-music')   as HTMLAudioElement;
+  private _menuMusicActive = false;
 
   private _setCanvasCover(visible: boolean): void {
     if (this._cover) this._cover.style.display = visible ? 'block' : 'none';
@@ -62,6 +63,27 @@ export class UIManager {
       if (el) this._panels.set(id, el);
     }
     this._bindStaticButtons();
+    this._initAudioAutoplay();
+  }
+
+  private _initAudioAutoplay() {
+    // Sync initial volume from slider
+    const vol = document.getElementById('opt-volume') as HTMLInputElement | null;
+    if (vol && this._music) {
+      this._music.volume = Number(vol.value) / 100;
+    }
+
+    // Browsers block autoplay until the user interacts with the page.
+    // Listen for the first click or keypress anywhere to unlock audio context.
+    const unlockAudio = () => {
+      document.removeEventListener('click', unlockAudio);
+      document.removeEventListener('keydown', unlockAudio);
+      if (this._menuMusicActive) {
+        this._playMenuMusic();
+      }
+    };
+    document.addEventListener('click', unlockAudio);
+    document.addEventListener('keydown', unlockAudio);
   }
 
   // ── Show / Hide ───────────────────────────────────────────────────────────
@@ -107,6 +129,7 @@ export class UIManager {
     // Menu music: play ONLY during menu states (main menu, song select)
     // Stop during gameplay (COUNTDOWN/PLAYING/PAUSED) and post-game (RESULTS/GAME_OVER)
     const isMenu = state === 'MAIN_MENU' || state === 'SONG_SELECT' || state === 'DIFFICULTY_SELECT';
+    this._menuMusicActive = isMenu;
     if (isMenu) {
       this._playMenuMusic();
     } else {
@@ -299,7 +322,11 @@ export class UIManager {
 
     // Volume slider
     const vol = document.getElementById('opt-volume') as HTMLInputElement | null;
-    vol?.addEventListener('input', () => this._cb.onVolumeChange(Number(vol.value) / 100));
+    vol?.addEventListener('input', () => {
+      const v = Number(vol.value) / 100;
+      this._cb.onVolumeChange(v);
+      if (this._music) this._music.volume = v;
+    });
 
     // Offset slider
     const off = document.getElementById('opt-offset') as HTMLInputElement | null;
