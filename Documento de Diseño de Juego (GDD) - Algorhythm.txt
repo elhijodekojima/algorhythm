@@ -1,0 +1,85 @@
+﻿Documento de Diseño de Juego (GDD) - Algorhythm
+1. Visión General y Contexto
+* Nombre del Proyecto: Algorhythm
+* Género: Juego de ritmo musical en 3D
+* Plataforma: Web (Navegador de escritorio). Despliegue en Vercel.
+* Elevator Pitch: "Un simulador de piano arcade donde el jugador usa su teclado QWERTY para tocar canciones generadas por IA, cuyas notas caen en un entorno 3D relajante"].
+2. Bucle de Jugabilidad (Core Loop)
+1. Selección: El jugador elige una pista musical en el menú “Start Session” desde el “main menu”.
+2. Ejecución: El jugador observa las notas caer en 10 carriles 3D (uno por cada tecla, es decir, las notas) e intenta presionar las teclas correspondientes en el momento exacto (con un margen de error permitido) en que cruzan la "línea de impacto" (Hit Line).
+3. Feedback: El juego proporciona información visual y auditiva inmediata (Acierto, Fallo, Puntuación).
+4. Resolución: Al terminar la canción, se muestra una pantalla de resultados con el porcentaje de precisión y la puntuación total.
+3. Mecánicas y Controles
+3.1 Mapeo de Controles
+* Teclas activas: De izquierda a derecha: Q, W, E, R, V, B, U, I, O, P. Las 5 primeras representan a la mano izquierda de un piano real y refieren a notas graves y las 5 últimas la mano derecha y notas agudas; de forma que la tecla Q representa a la nota más grave y P, la más aguda.
+* Acción: Presionar la tecla exactamente cuando el bloque de la nota colisiona con el Hit Box correspondiente.
+3.2 Sistema de Notas (Chart)
+* Formato de entrada: Los niveles se leerán desde un archivo (JSON o MIDI parseado).
+* Velocidad (Scroll Speed): La velocidad de “caída” irá aparejado con el BPM de la canción pero, como norma general, debe permitir ver las notas caer con tiempo. Es decir, que la nota aparezca unos 3 segundos antes de cuando suene en la canción (y deba presionarse)
+3.3 Sistema de Puntuación (Scoring)
+* Acierto: (+50 puntos) No se penaliza el fallo en materia de puntuación.
+* Combo: Cada 10 aciertos seguidos se añade un multiplicador. Empieza en x1 y si aciertas 10 seguidas, cambia a x2, luego a x3 y, como máximo, x4.
+3.4 Sistema de Éxito-Fracaso
+Similar a los juegos de la saga Guitar Hero, el jugador comienza con un 50% que oscila según el acierto o fallo del jugador. El máximo es el 100% y no sobrepasa de ahí pero si llega al 0% la canción se detiene y se considera un “game over”.
+El juego lo muestra como una barra vertical luminosa (a tono con el estilo gráfico del juego) al lado del carril de juego. La barra mantiene un color azulado si está entre el 33 y 66%, verde si está por encima del 66% y rojo parpadeante si está por debajo del 33%. La barra se llena y se vacía conforme los aciertos y fallos. Para lo cual hay que definir el fallo.
+Tipos de fallos (“miss”):
+1. Input extra: “tocar una nota cuando no se deba”, el “teclado” del jugador está activo en todo momento, si el jugador presiona una tecla cuando no hay ninguna en la “Hit Line” se considerará un “miss”. Sonoramente, la tecla emite un sonido referente a una nota musical pero distorsionada para ilustrar el fallo.
+2. Input omitido: “la nota pasa la Hit Line sin ser tocada”, así como suena. Sonoramente, el volumen al que se está reproduciendo el MP3 de la canción se atenúa para remarcar la ausencia del input.
+3.5 Sistema de Dificultad
+Se establece la posibilidad de elegir la dificultad de la canción antes de tocarla y después de elegirla. Hay 3: Fácil, Medio y Experto.
+Las canciones y el juego están pensados para el modo Experto, su “chart” estará pensado para reflejar lo más fidedignamente posible el movimiento de las manos del pianista real con el de las del jugador. Mientras que el modo Fácil y Medio son versiones reducidas y simplificadas del modo Experto.
+Cómo cambia cada modo:
+1. Fácil: Los charts del modo Fácil solo involucran las teclas Q, W, E, I, O y P. La scroll speed es la más lenta. Un acierto suma un 2% a la barra de éxito-fracaso y los fallos restan un 0.5%
+2. Medio: Los charts involucran las teclas Q, W, E, R, U, I, O y P. La scroll speed es algo más rápida. Los aciertos y fallos suman y restan 1% a la barra.
+3. Experto: Los charts involucran todas las teclas propuestas. La scroll speed es más rápida y sincronizada más con la BPM de la canción. Los aciertos suman 1% pero los fallos restan 2% a la barra.
+
+
+3.6 Barra de progreso
+Se mostrará una barra sincronizada con el progreso de la canción, empezando con el 0% cuando empieza la canción y con el 100% cuando termina. Importa este porcentaje porque si el jugador falla la canción y provoca un “game over” se le pueda mostrar en qué porcentaje de la canción ha caído.
+3.7 Tipos de notas
+* Nota simple: una nota, un sonido, una tecla, sin más.
+* Acorde: cuando se tocan 2 o más notas simultáneamente. Si alguno de los inputs que conforman el acorde no se toca adecuadamente, todo el acorde falla incurriendo en un “miss”; fallar/acertar un acorde contribuye igual que una nota simple a la barra de éxito-fracaso. Pero la puntuación del acorde es la de un acierto multiplicado por el número de notas de los que está compuesto.
+* Nota sostenida: al igual que las “sustains” del Guitar Hero, son notas que el jugador debe mantener para que sigan sonando. Soltarlas antes de tiempo no incurre en un “miss”, pero deja de puntuar por ellas. Mantener una nota sostenida va puntuando conforme la mantiene (4 puntos por frame). Seguir sosteniendo las teclas correspondientes después de haberse terminado la nota sostenida tampoco incurre en un “miss”.
+* Pueden existir acordes sostenidos, mezclando estos dos últimos tipos de notas
+4. Pipeline de Assets y Lógica de Audio
+* Música: Archivos de audio (MP3/OGG) pre-renderizados e integrados en los assets.
+* Sincronización: El motor en Three.js debe usar el currentTime del reproductor de audio web como única fuente de verdad (Single Source of Truth) para interpolar la posición Z (profundidad) de las notas que caen.
+* Desfase (Offset): Añade una opción en el menú de “opciones” (accesible desde el main menu) de que el jugador pueda corregir manualmente el desfase, si lo hubiere.
+5. Estética y Renderizado (Three.js)
+* Estilo Visual: Ambiente esotérico y futurista y luces de neón.
+* Cámara: Perspectiva en 3D mirando hacia un "teclado" virtual en la parte inferior, con las notas viniendo desde el horizonte hacia la cámara.
+* Feedback Visual:
+   * Al acertar una nota: destello en la tecla, partículas saltando.
+   * Al fallar: la nota se desvanece en rojo.
+6. Arquitectura de UI (User Interface)
+* La interfaz se construirá usando HTML/CSS superpuesto sobre el canvas de Three.js o geometría 3D.
+* Pantallas requeridas:
+   1. Pantalla de Título / Menú Principal. (a continuación se muestra su imagen)  
+Desde “Menú principal”, en la esquina superior derecha se desplegará: “Start Session” y “Options”.
+Desde “Options”: Una barra deslizable para ajustar el volumen (empezando por el 100%) y que tenga un tic sonoro para guiarse y la opción para ajustar el “offset” antes mencionado.
+   2. Start Session: el selector de canciones, que al principio serán 6 y se mostrarán en un listado vertical con el siguiente formato: “Session #X: (X es el número de la canción del 1 al 6) [título de la canción] (en una línea inferior). Al principio solo la primera canción estará desbloqueada, para que el jugador desbloquee la siguiente tiene que superar la anterior en cualquier dificultad; las canciones bloqueadas no permitirán ser elegibles y mostrarán lo que el jugador tiene que hacer para desbloquearlas. Una vez elegida la canción a jugar y sin cambiar de menú, el listado de canciones desaparecerá y en su lugar saldrá el selector de dificultad (Fácil, Medio y Experto)
+
+
+   3. HUD en Juego (Puntuación, Combo, Barra de progreso).
+   4. Pantalla de Resultados y Menú de Pausa
+                Menú de Pausa: con las opciones de “Reintentar”, “Salir a Main Menu”, “Salir al selector de “Sessions””, y un acceso al mismo menú de opciones que hay en el “main menú” (pero si altera el desfase debe advertir al jugador de que la canción va a reiniciarse para aplicar el cambio)
+                Pantalla de Resultados: 2 tipos
+                        Jugador supera la canción: Se muestra la puntuación, un % de precisión (total de notas acertadas frente al total del chart) y un número de “estrellas” un función de dicha precisión (6 si ha tenido una precisión del 100%, 5 si está entre 90 y 99.99% de precisión, 4 si entre 80 y 89.99% y 3 si es menor de 80% la precisión). Además de las opciones de reintentar la canción, ir al “main menu” o elegir otra canción.
+                        Jugador fracasa la canción: Mostrar el mensaje “You failed [nombre de la canción] at [porcentaje de progreso de la canción donde ha ocurrido el “game over”]. Y las mismas opciones que si la hubiera superado (ir al main menu, selector de canciones o reintentar).
+7. Alcance del MVP (Producto Mínimo Viable)
+Para la primera iteración funcional completa, Antigravity debe lograr exclusivamente lo siguiente:
+   * [ ] Un escenario vacío en Three.js con la cámara configurada y la iluminación base.
+   * [ ] Un carril de notas funcional donde cubos 3D se desplacen hacia la cámara.
+   * [ ] Un sistema de lectura de un "chart" de prueba (un array de notas hardcodeado o un JSON simple).
+   * [ ] Detección de input del teclado sincronizado con las notas.
+   * [ ] Reproducción de un archivo de audio sincronizado con el movimiento visual.
+
+
+
+
+
+
+Miscelánea obligatoria: Song-Test
+
+
+Sería necesario que, de manera transitoria, se establezca una canción simple, generada rudimentariamente con el mismo Antigravity con la intención de testear el “game feel” sin necesidad de tener una canción completa. Debería ser fácil, que tenga un muestrario de los distintos tipos de notas y que sea accesible rápidamente desde el propio “main menu”. Se eliminará este song-test cuando el proyecto avance considerablemente.

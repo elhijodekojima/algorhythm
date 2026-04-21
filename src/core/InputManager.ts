@@ -1,5 +1,8 @@
 // @module src/core/InputManager.ts
 // SINGLETON — manages all keyboard input for the game loop.
+// Updated per GDD §3.1: 10 active keys are Q W E R V B U I O P
+
+import { LANE_KEYS } from '@midi/noteTypes';
 
 /**
  * Tracks which keys are currently held and which were pressed this frame.
@@ -15,16 +18,8 @@ export class InputManager {
   /** Set of keys pressed this frame (cleared each update tick) */
   private readonly _justPressed = new Set<string>();
 
-  /** QWERTY columns mapped as piano lanes (left hand + right hand home rows) */
-  static readonly LANE_KEYS: readonly string[] = [
-    'KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG',   // Left hand — lower row
-    'KeyH', 'KeyJ', 'KeyK', 'KeyL', 'Semicolon', // Right hand — lower row
-  ];
-
-  static readonly UPPER_KEYS: readonly string[] = [
-    'KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyT',   // Left hand — upper row
-    'KeyY', 'KeyU', 'KeyI', 'KeyO', 'KeyP',   // Right hand — upper row
-  ];
+  /** Set of keys released this frame (cleared each update tick) */
+  private readonly _justReleased = new Set<string>();
 
   private constructor() {
     window.addEventListener('keydown', this._onKeyDown);
@@ -39,9 +34,10 @@ export class InputManager {
     return InputManager._instance;
   }
 
-  /** Call once per frame at the END of update() to clear just-pressed state */
+  /** Call once per frame at the END of update() to clear frame-state */
   flush(): void {
     this._justPressed.clear();
+    this._justReleased.clear();
   }
 
   /** Returns true if `code` is currently held down */
@@ -54,20 +50,49 @@ export class InputManager {
     return this._justPressed.has(code);
   }
 
-  /** Returns the index of the lane key if it was just pressed, or -1 */
+  /** Returns true only on the first frame the key was released */
+  wasJustReleased(code: string): boolean {
+    return this._justReleased.has(code);
+  }
+
+  /**
+   * Returns the lane index (0–9) of the first lane key just pressed this frame,
+   * or -1 if no lane key was pressed.
+   */
   getJustPressedLane(): number {
-    for (let i = 0; i < InputManager.LANE_KEYS.length; i++) {
-      if (this._justPressed.has(InputManager.LANE_KEYS[i]!)) return i;
+    for (let i = 0; i < LANE_KEYS.length; i++) {
+      if (this._justPressed.has(LANE_KEYS[i]!)) return i;
     }
     return -1;
   }
 
-  private readonly _onKeyDown = (e: KeyboardEvent): void => {
-    // Prevent browser shortcuts from firing inside the game
-    if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault();
+  /**
+   * Returns an array of all lane indices pressed this frame.
+   * Needed for chord detection.
+   */
+  getJustPressedLanes(): number[] {
+    const result: number[] = [];
+    for (let i = 0; i < LANE_KEYS.length; i++) {
+      if (this._justPressed.has(LANE_KEYS[i]!)) result.push(i);
+    }
+    return result;
+  }
 
+  /**
+   * Returns an array of all lane indices currently held down.
+   * Needed for sustain scoring.
+   */
+  getHeldLanes(): number[] {
+    const result: number[] = [];
+    for (let i = 0; i < LANE_KEYS.length; i++) {
+      if (this._held.has(LANE_KEYS[i]!)) result.push(i);
+    }
+    return result;
+  }
+
+  private readonly _onKeyDown = (e: KeyboardEvent): void => {
+    if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault();
     if (!this._held.has(e.code)) {
-      // Only register as "just pressed" on the leading edge (not on repeat)
       this._justPressed.add(e.code);
     }
     this._held.add(e.code);
@@ -75,6 +100,7 @@ export class InputManager {
 
   private readonly _onKeyUp = (e: KeyboardEvent): void => {
     this._held.delete(e.code);
+    this._justReleased.add(e.code);
   };
 
   destroy(): void {

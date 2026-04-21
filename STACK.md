@@ -120,22 +120,109 @@ Native `KeyboardEvent` listeners managed by a singleton `InputManager`:
 
 ## AI Pipeline Tools (External, not in codebase)
 
+### 🎵 Music Generation
+
 | Tool | Role |
 |------|------|
-| Suno / Udio | AI music generation |
-| Demucs / LALAL.AI | Stem separation — isolate piano track |
-| Spotify Basic Pitch | Audio-to-MIDI transcription |
-| AnthemScore | Alternative MIDI transcription (better chord detection) |
+| Suno / Udio | AI music generation (full song) |
+
+---
+
+### 🎛️ Stem Separation — Tool Comparison & Recommendation
+
+This is the most critical step in the pipeline: isolating the **piano stem** from a full mix.
+
+| Tool | Repo | Piano Stem? | Quality | Maintenance | Verdict |
+|------|------|-------------|---------|-------------|-------|
+| **Demucs `htdemucs_6s`** | [facebookresearch/demucs](https://github.com/facebookresearch/demucs) | ✅ Dedicated stem | Good for transcription, audible artifacts for production | Active | ✅ **Good enough for our use case** |
+| **audio-separator** | [nomadkaraoke/python-audio-separator](https://github.com/nomadkaraoke/python-audio-separator) | ✅ Via UVR models | Excellent — best-in-class MDX-Net models | Very Active | 🏆 **Recommended** |
+| **UVR5 (Ultimate Vocal Remover)** | [Anjok07/ultimatevocalremovergui](https://github.com/Anjok07/ultimatevocalremovergui) | ✅ Ensemble mode | Best-in-class | Very Active | 🏆 **Best quality, GUI-based** |
+| **Spleeter** | [deezer/spleeter](https://github.com/deezer/spleeter) | ✅ 5-stem model | Outdated, artifacts | **Abandoned** (TensorFlow 1.x) | ❌ Avoid |
+| **LALAL.AI** | SaaS, not open source | ✅ | Commercial-grade | N/A | 💰 Paid, not open-source |
+
+#### 🏆 Recommendation: `audio-separator` + `python-audio-separator`
+
+**Repo:** https://github.com/nomadkaraoke/python-audio-separator
+
+```bash
+pip install audio-separator
+audio-separator track.mp3 --model_filename UVR-MDX-NET-Inst_HQ_4.onnx
+```
+
+**Why it beats plain Demucs for our use case:**
+- Wraps Demucs AND the full library of **UVR/MDX-Net ONNX models** in one clean Python API
+- MDX-Net-based models consistently outperform `htdemucs_6s` on piano isolation in blind tests
+- **ONNX runtime** — no CUDA required, runs on CPU (slower but viable for Vercel Functions / Modal)
+- One package, one command, swap models at will
+- Actively maintained (vs. Demucs which focuses on research, not DX)
+
+**Recommended model sequence for piano extraction:**
+```
+1. audio-separator (MDX-Net Inst HQ)  →  removes vocals → instrumental
+2. audio-separator (UVR-MDX-NET Piano) →  isolates piano from instrumental
+3. basic-pitch                          →  piano audio → MIDI chart
+```
+
+---
+
+### 🎹 Audio-to-MIDI Transcription
+
+| Tool | Repo | Notes |
+|------|------|-------|
+| **Spotify Basic Pitch** | [spotify/basic-pitch](https://github.com/spotify/basic-pitch) | ✅ **Recommended** — Python + browser WASM, polyphonic piano |
+| AnthemScore | Desktop app (paid) | Better chord detection, but closed-source |
+
+---
+
+### 🏗️ Future: Custom Song Submission Architecture
+
+> This feature is **not in scope for the Vibe Jam deadline** but is designed into the architecture from the start.
+
+When players submit their own songs, the processing pipeline runs **server-side** (not in the browser — ML models are too heavy).
+
+#### Option A — Replicate API (Recommended for MVP)
+
+- Users upload audio → stored in **Vercel Blob Storage**
+- Vercel Function calls **[Replicate `cjwbw/demucs`](https://replicate.com/cjwbw/demucs)** with the file URL
+- Replicate runs GPU-accelerated Demucs, returns stem URLs via **webhook**
+- Backend runs Basic Pitch on the piano stem → generates MIDI JSON
+- Chart stored and linked to the user submission
+
+```
+user upload → Vercel Blob → Replicate API (Demucs) → webhook → Basic Pitch → MIDI chart → stored
+```
+
+**Cost**: ~$0.01–0.05 per song (pay-per-GPU-second)
+
+#### Option B — Modal.com (Better long-term)
+
+- Deploy `audio-separator` + `basic-pitch` as a **Modal serverless function**
+- Full control over models, no per-model restrictions
+- Cold starts ~5s, warm starts <1s
+- Cost comparable to Replicate but full model flexibility
+
+#### Submission Limits (to define in Sprint 5+)
+
+| Limit | Proposed Value | Reason |
+|-------|---------------|--------|
+| File size | Max 20MB | Keeps processing time <60s |
+| Format | MP3, WAV, FLAC | Demucs works best with WAV/FLAC |
+| Duration | Max 5 min | Processing cost control |
+| Submissions/day per user | 3 | Abuse prevention |
+| Moderation | Auto-flag explicit content | Community safety |
 
 ---
 
 ## Dependency Installation
 
 ```bash
-# Core
+# Core game
 npm install three howler midi-file
 npm install -D typescript vite @types/three @typescript-eslint/parser @typescript-eslint/eslint-plugin eslint prettier vitest
 
 # Optional upgrade (evaluate at sprint 2)
 # npm install @tonejs/midi
+
+# Future: Custom Song Submission backend (Python)
+# pip install audio-separator basic-pitch
 ```

@@ -1,5 +1,6 @@
 // @module src/gfx/scene.ts
 // Creates and owns the Three.js Scene, Camera, and ambient lighting.
+// Camera angle updated to look down the note highway per GDD §5.
 
 import * as THREE from 'three';
 
@@ -14,37 +15,37 @@ export function createScene(): THREE.Scene {
   scene.background = new THREE.Color(0x05040f);
 
   // Exponential fog creates a vanishing point effect along the highway (Z axis)
-  scene.fog = new THREE.FogExp2(0x05040f, 0.015);
+  scene.fog = new THREE.FogExp2(0x05040f, 0.012);
 
-  // Ambient light — very dim, neon sources provide the main illumination
-  const ambient = new THREE.AmbientLight(0x1a0f3a, 0.4);
+  // Very dim ambient — neon emissives provide main illumination
+  const ambient = new THREE.AmbientLight(0x1a0f3a, 0.3);
   scene.add(ambient);
 
-  // Directional fill light from above — slightly purple tint
-  const fill = new THREE.DirectionalLight(0xb36bff, 0.3);
-  fill.position.set(0, 20, 10);
+  // Subtle directional fill from above
+  const fill = new THREE.DirectionalLight(0xb36bff, 0.2);
+  fill.position.set(0, 20, 5);
   scene.add(fill);
 
   return scene;
 }
 
 /**
- * Creates the perspective camera positioned to look down the note highway.
- * FOV=60, camera sits slightly elevated and behind the hit zone.
+ * Camera positioned above and behind the Hit Line, looking down the highway.
+ * GDD §5: "Perspectiva en 3D mirando hacia un teclado virtual en la parte inferior,
+ * con las notas viniendo desde el horizonte hacia la cámara."
  */
 export function createCamera(): THREE.PerspectiveCamera {
   const camera = new THREE.PerspectiveCamera(
-    60,
+    55,
     window.innerWidth / window.innerHeight,
     0.1,
-    500,
+    600,
   );
 
-  // Position: slightly elevated, looking toward the vanishing point
-  camera.position.set(0, 4, 10);
-  camera.lookAt(0, 0, -30);
+  // Elevated and slightly behind the hit line, angled down the runway
+  camera.position.set(0, 8, 14);
+  camera.lookAt(0, 0, -25);
 
-  // Keep aspect ratio on resize
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();

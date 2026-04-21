@@ -1,126 +1,219 @@
 # 📋 NEXT_STEPS.md — Active Backlog
-
 > Living document. Updated by AI after every completed task.
+> Based on: `GDD.md` v1.0 — 2026-04-21
 > Format: `[x]` done · `[/]` in progress · `[ ]` pending
 
 ---
 
-## 🏁 Sprint 0 — Foundation & Environment Setup
+## ✅ Sprint 0 — Foundation (DONE)
 
-- [ ] **S0-01** · Initialize Vite + TypeScript project (`npm create vite@latest ./`)
-  - Choose `vanilla-ts` template
-  - Confirm `tsconfig.json` has `strict: true` and all rules from `STYLE_LOCK.md`
-- [ ] **S0-02** · Install core dependencies
-  ```bash
-  npm install three howler midi-file
-  npm install -D @types/three typescript eslint prettier vitest
+- [x] **S0-01** · Vite + TypeScript scaffold (`npm init` + manual setup)
+- [x] **S0-02** · Install core dependencies (three, howler, midi-file, eslint, prettier, vitest)
+- [x] **S0-03** · `vite.config.ts` with path aliases
+- [x] **S0-04** · Folder structure: `src/core/`, `src/gfx/`, `src/midi/`, `src/audio/`, `src/entities/`, `src/state/`
+- [x] **S0-05** · `eslint.config.js` + `.prettierrc`
+- [x] **S0-06** · Google Fonts (Orbitron + Space Grotesk) in `index.html`
+- [x] **S0-07** · Vibe Jam 2026 widget in `index.html` ✅
+- [x] **S0-08** · `vercel.json` build config
+- [x] **S0-09** · First commit + push — initial scaffold pushed to `dev` and merged to `main`
+
+---
+
+## ✅ Sprint 1 — Hello World (DONE)
+
+- [x] **S1-01** · `Renderer.ts` — WebGLRenderer + EffectComposer + UnrealBloomPass
+- [x] **S1-02** · `scene.ts` — Scene, PerspectiveCamera, FogExp2
+- [x] **S1-03** · `GameLoop.ts` — requestAnimationFrame + THREE.Clock (delta in seconds)
+- [x] **S1-04** · Glowing neon cube with emissive material + slow Y rotation
+- [x] **S1-05** · `InputManager.ts` — keydown/keyup → Set of held keys, `wasJustPressed()`
+- [x] **S1-06** · Cube changes color on lane key press (proof of input pipeline)
+
+---
+
+## 🔴 Sprint 2 — Core Architecture Refactor (GDD Alignment)
+
+> ⚠️ The GDD introduced key changes not in the original plan. This sprint aligns the codebase.
+
+### 2A — Correct Key Mapping (BREAKING CHANGE from Sprint 1)
+
+- [ ] **S2A-01** · Update `InputManager.ts` — new lane key order per GDD §3.1:
   ```
-- [ ] **S0-03** · Configure `vite.config.ts` (aliases, base path for Vercel)
-- [ ] **S0-04** · Create folder structure as defined in `README.md`
-  - `src/core/` · `src/gfx/` · `src/midi/` · `src/audio/` · `src/entities/` · `src/state/`
-- [ ] **S0-05** · Set up `eslint.config.js` + `.prettierrc` with settings from `STYLE_LOCK.md`
-- [ ] **S0-06** · Add Google Fonts (`Orbitron` + `Space Grotesk`) to `index.html`
-- [ ] **S0-07** · Add Vibe Jam widget to `index.html` (**REQUIRED — do not skip**)
-  ```html
-  <script async src="https://vibej.am/2026/widget.js"></script>
+  LANE_KEYS = ['KeyQ','KeyW','KeyE','KeyR','KeyV','KeyB','KeyU','KeyI','KeyO','KeyP']
   ```
-- [ ] **S0-08** · Create `vercel.json` with build config
-- [ ] **S0-09** · Initial commit and push to GitHub
+  > Note: V and B — NOT home row. These are the 5th and 6th keys on the bottom row.
+- [ ] **S2A-02** · Update difficulty key masks in a new `DifficultyConfig.ts`:
+  - Easy: lanes [0,1,2,6,7,8] → Q,W,E,I,O,P
+  - Medium: lanes [0,1,2,3,6,7,8,9] → Q,W,E,R,U,I,O,P
+  - Expert: all 10 lanes
+
+### 2B — Note Types (GDD §3.7)
+
+- [ ] **S2B-01** · Define note type system in `src/midi/noteTypes.ts`:
+  ```ts
+  type NoteType = 'single' | 'chord' | 'sustain' | 'sustained_chord';
+  interface INoteEvent {
+    time: number;        // seconds from song start
+    duration: number;    // 0 = single/chord, >0 = sustain
+    lanes: number[];     // array allows chords (1 lane = simple, 2+ = chord)
+    type: NoteType;
+  }
   ```
-  git commit -m "chore: initialize project scaffold"
+- [ ] **S2B-02** · Note pool — `src/entities/NotePool.ts`
+  - Pre-allocate 60 Three.js mesh objects
+  - `acquire(note: INoteEvent): PooledNote`
+  - `release(note: PooledNote): void`
+
+### 2C — The Note Highway (GDD §5)
+
+- [ ] **S2C-01** · Remove `HelloCube.ts` from scene — replace with `NoteHighway.ts`
+- [ ] **S2C-02** · Create `src/entities/NoteHighway.ts`:
+  - 10 lane corridor along Z axis
+  - Hit Line at `z = 0`, spawn at `z = -SPAWN_DEPTH` (derived from 3s lead time at current bpm)
+  - Lane tiles: `PlaneGeometry` with subtle neon grid, one per lane
+  - Lane key labels displayed on the hit zone tiles (Q, W, E, R, V, B, U, I, O, P)
+- [ ] **S2C-03** · Camera position: slightly above and behind Hit Line looking down the highway
+  - Position: `(0, 6, 12)` · LookAt: `(0, 0, -40)` — adjust for best feel
+- [ ] **S2C-04** · Note position formula (per GDD §3.2 — 3s lead time):
+  ```ts
+  const LEAD_TIME = 3.0; // seconds
+  note.mesh.position.z = lerp(SPAWN_DEPTH, HIT_LINE_Z, progress);
+  // progress = (songTime - (note.time - LEAD_TIME)) / LEAD_TIME
   ```
 
 ---
 
-## 🧊 Sprint 1 — Render a Cube & Keyboard Input (Hello World)
+## 🔴 Sprint 3 — Chart System & Test Song
 
-- [ ] **S1-01** · Create `src/gfx/renderer.ts` — Three.js `WebGLRenderer` setup
-  - Canvas fills viewport, bg color `#05040f`, `antialias: true`
-  - `EffectComposer` + `UnrealBloomPass` initialized (values from `STYLE_LOCK.md`)
-- [ ] **S1-02** · Create `src/gfx/scene.ts` — Scene, camera (PerspectiveCamera), `FogExp2`
-  - Camera: `fov=60`, position `(0, 4, 8)`, looking at `(0, 0, -10)`
-- [ ] **S1-03** · Create `src/core/GameLoop.ts` — `requestAnimationFrame` loop
-  - Uses `THREE.Clock` for delta. Calls `update(delta)` then `render()`
-- [ ] **S1-04** · Render a **glowing neon cube** centered at origin
-  - `MeshStandardMaterial` with `emissive: 0xb36bff`, `emissiveIntensity: 1.2`
-  - Cube slowly rotates on Y axis — visual proof that the loop works
-- [ ] **S1-05** · Create `src/core/InputManager.ts` — Keyboard event listener
-  - Tracks `Set<string>` of currently held keys
-  - Exposes `isDown(key: string): boolean` and `wasJustPressed(key: string): boolean`
-- [ ] **S1-06** · Log pressed key to console + change cube's emissive color on keypress
-  - Proof that input pipeline is wired to the game loop
-- [ ] **S1-07** · Commit: `feat: render hello world cube with keyboard input`
+### 3A — Chart Loader
 
----
+- [ ] **S3A-01** · Create `src/midi/ChartLoader.ts`:
+  - Reads JSON chart format
+  - Parses `INoteEvent[]` with full type support (single/chord/sustain)
+  - Applies difficulty filter (masks lanes per `DifficultyConfig`)
+- [ ] **S3A-02** · Create `src/midi/MidiParser.ts`:
+  - Parse `.mid` binary with `midi-file`
+  - `ticksToSeconds()` with full tempo map (see MEMORY ADR-001)
+  - Output: `INoteEvent[]`
 
-## 🎵 Sprint 2 — MIDI Parser & Note Highway
+### 3B — Song-Test (GDD §8 — Miscelánea obligatoria)
 
-- [ ] **S2-01** · Create `src/midi/midiParser.ts` — Load and parse a `.mid` file
-  - Use `midi-file` library
-  - Implement `ticksToSeconds()` with full tempo map support (see `MEMORY.md PROBLEM-001`)
-  - Output: `NoteEvent[]` array sorted by time
-- [ ] **S2-02** · Create `src/midi/laneMapper.ts` — Map MIDI pitches to lane indices
-  - Auto-detect pitch range from chart
-  - Map to N lanes (default: 10 for home row setup)
-- [ ] **S2-03** · Write unit tests for parser + mapper (Vitest)
-  - Test multi-tempo MIDI file
-  - Test pitch range detection
-  - Test lane mapping edge cases
-- [ ] **S2-04** · Create `src/entities/NoteHighway.ts` — The 3D note highway
-  - Z-axis corridor: spawn at `z=-80`, hit zone at `z=0`
-  - Lane tiles: `PlaneGeometry` textured with subtle grid
-- [ ] **S2-05** · Create `src/entities/Note.ts` — Pooled note mesh
-  - Object pool of 50 pre-created note boxes
-  - Position derived from `currentTime` and `LEAD_TIME` (see `MEMORY.md PROBLEM-002`)
-- [ ] **S2-06** · Simulate note highway with test MIDI data (no audio yet)
-  - Notes should scroll at correct speed
-- [ ] **S2-07** · Commit: `feat: MIDI parser + 3D note highway`
+- [ ] **S3B-01** · Create `public/charts/song-test.json` — hardcoded chart with:
+  - Simple notes (all 10 lanes)
+  - At least 2 chords
+  - At least 2 sustained notes
+  - At least 1 sustained chord
+  - Difficulty: Easy/accessible, ~60–90 seconds
+- [ ] **S3B-02** · Generate test audio programmatically (Web Audio API synth — no file needed):
+  - Create `src/audio/SynthEngine.ts` — generates a simple piano-like tone sequence
+  - Matches the chart timestamps
+  - Easy to toggle off once real songs are integrated
+- [ ] **S3B-03** · Wire song-test to Main Menu — "▶ Play Test Song" button visible immediately
 
 ---
 
-## 🔊 Sprint 3 — Audio Engine & Sync
+## 🔴 Sprint 4 — Audio Engine & Sync
 
-- [ ] **S3-01** · Create `src/audio/AudioEngine.ts` — Howler.js wrapper
-  - Load song audio file, expose `play()`, `pause()`, `seek()`, `currentTime`
-- [ ] **S3-02** · Implement master clock sync
-  - `startTime = audioContext.currentTime` on play
-  - All note logic uses `audioContext.currentTime - startTime`
-- [ ] **S3-03** · Wire audio + MIDI: notes scroll in true sync with music
-- [ ] **S3-04** · Handle tab visibility (`visibilitychange`) — pause/resume gracefully
-- [ ] **S3-05** · Commit: `feat: audio engine + MIDI sync`
-
----
-
-## 🎮 Sprint 4 — Hit Detection & Scoring
-
-- [ ] **S4-01** · Define hit windows: Perfect (±40ms), Good (±80ms), Miss (>80ms)
-- [ ] **S4-02** · Create `src/core/HitDetector.ts` — Compare key press timing against note events
-- [ ] **S4-03** · Create `src/state/ScoreManager.ts` — Score, combo, multiplier
-- [ ] **S4-04** · Visual hit feedback: lane flash + particle burst on Perfect hit
-- [ ] **S4-05** · Visual miss feedback: camera shake
-- [ ] **S4-06** · Create HUD: score, combo, song progress bar (vanilla DOM)
-- [ ] **S4-07** · Commit: `feat: hit detection + scoring + HUD`
+- [ ] **S4-01** · `src/audio/AudioEngine.ts` — Howler.js wrapper
+  - `play()`, `pause()`, `seek()`, `currentTime` via `AudioContext`
+  - `startTime` captured at playback begin (ADR-004)
+- [ ] **S4-02** · Wire `AudioContext.currentTime - startTime` as song position to `NoteHighway`
+- [ ] **S4-03** · Handle `visibilitychange` — pause/resume audio + loop gracefully
+- [ ] **S4-04** · Manual offset system (GDD §4):
+  - Store offset in ms in game settings
+  - Apply: `effectiveSongTime = audioTime + offsetMs / 1000`
 
 ---
 
-## 🏁 Sprint 5 — Song Select & Game Flow
+## 🔴 Sprint 5 — Hit Detection & Scoring
 
-- [ ] **S5-01** · Create `src/state/GameState.ts` — FSM: `IDLE → LOADING → PLAYING → RESULT`
-- [ ] **S5-02** · Song select screen (minimal, speed > beauty for jam deadline)
-- [ ] **S5-03** · Result screen: score, accuracy %, star rating
-- [ ] **S5-04** · Implement Vibe Jam portal (optional but recommended — see `RULES.md`)
-- [ ] **S5-05** · Final QA: no loading screen longer than 1 second
-- [ ] **S5-06** · Deploy to Vercel production
-- [ ] **S5-07** · Submit to Vibe Jam 2026 via: https://forms.gle/bGG4e3uD9PUUJKUc7
-- [ ] **S5-08** · Final commit: `chore: production deploy + jam submission`
+- [ ] **S5-01** · `src/core/HitDetector.ts`:
+  - Hit window: **±80ms** from note.time (single threshold, no perfect/good split per GDD)
+  - Input extra detection: keypress when no note in hit window → miss
+  - Input omitted: note passes hit line unplayed → miss
+- [ ] **S5-02** · `src/state/ScoreManager.ts`:
+  - Score accumulation (+50 per hit, ×combo multiplier)
+  - Combo tracking: reset on miss, ×2 at 10, ×3 at 20, ×4 at 30+
+  - Sustain scoring: +4 pts/frame while held
+- [ ] **S5-03** · `src/state/LifeBar.ts` — GDD §3.4:
+  - Starts at 50%
+  - Clamps 0–100%
+  - Game Over at 0%
+  - Changes per difficulty config
+- [ ] **S5-04** · Visual feedback (GDD §5):
+  - Hit: lane tile flash + 12-particle burst in lane color
+  - Miss: note mesh fades to red over 200ms
+  - Input extra miss: distorted note sound from SynthEngine
+  - Input omitted miss: duck audio volume by -12dB for 300ms
+- [ ] **S5-05** · Progress bar: `songTime / totalDuration` (0–100%)
 
 ---
 
-## 🎁 Backlog / Nice-to-Have (Post-Deadline)
+## 🔴 Sprint 6 — UI Screens (GDD §6)
 
-- [ ] Leaderboard (Vercel KV or Supabase)
+- [ ] **S6-01** · Main Menu screen (HTML overlay):
+  - Title: ALGORHYTHM in Orbitron neon
+  - Top-right: "Start Session" + "Options" buttons
+  - Temporary: "▶ Play Test Song" button (removed later)
+- [ ] **S6-02** · Options screen:
+  - Volume slider (0–100%, default 100%) with audio tick feedback
+  - Offset slider (−200ms to +200ms, default 0)
+- [ ] **S6-03** · Start Session / Song Selector:
+  - 6 song slots in vertical list (`Session #X · [Title]`)
+  - Progressive unlock — only #1 unlocked at start
+  - Locked songs show unlock condition
+  - Song selection → difficulty picker (Easy / Medium / Expert) replaces the list inline
+- [ ] **S6-04** · In-game HUD:
+  - Score (top right, Orbitron)
+  - Combo × multiplier (below score)
+  - Progress bar (bottom or top, horizontal)
+  - Life bar (vertical, left or right of highway, color-coded per GDD §3.4)
+- [ ] **S6-05** · Pause Menu (Esc key):
+  - Retry · Main Menu · Song Select · Options
+  - Offset change during pause → show restart warning
+- [ ] **S6-06** · Results Screen:
+  - Win: Score + Accuracy % + Stars (3–6 per GDD §6.6)
+  - Fail: "You failed [song] at [X%]"
+  - Navigation: Retry · Main Menu · Song Select
+
+---
+
+## 🔴 Sprint 7 — State Machine & Game Flow
+
+- [ ] **S7-01** · `src/state/GameState.ts` — FSM:
+  `MAIN_MENU → SONG_SELECT → DIFFICULTY_SELECT → COUNTDOWN → PLAYING → PAUSED → RESULT → GAME_OVER`
+- [ ] **S7-02** · Unlock system: persist completed songs in `localStorage`
+- [ ] **S7-03** · Countdown (3-2-1-GO) before gameplay starts
+- [ ] **S7-04** · Full integration test: main menu → song → play → result → back
+
+---
+
+## 🔴 Sprint 8 — Real Songs & MIDI Pipeline
+
+- [ ] **S8-01** · Add 1st real AI-generated song (MP3 + MIDI chart)
+- [ ] **S8-02** · Run `audio-separator` pipeline locally → extract piano stem → Basic Pitch → JSON chart
+- [ ] **S8-03** · Add songs 2–6 (progressive unlock order)
+- [ ] **S8-04** · Remove Song-Test from main menu
+
+---
+
+## 🔴 Sprint 9 — Polish & Vibe Jam Submission
+
+- [ ] **S9-01** · Vibe Jam portal implementation (optional, see RULES.md)
+- [ ] **S9-02** · Performance audit — 60fps on mid-range laptop
+- [ ] **S9-03** · Mobile/touch fallback notice (desktop-only game)
+- [ ] **S9-04** · Final QA — no loading screen >1 second
+- [ ] **S9-05** · Merge `dev` → `main` → Vercel production deploy
+- [ ] **S9-06** · Submit: https://forms.gle/bGG4e3uD9PUUJKUc7
+- [ ] **S9-07** · Final commit: `chore: production deploy + Vibe Jam submission`
+
+**DEADLINE: 1 MAY 2026 @ 13:37 UTC**
+
+---
+
+## 🎁 Post-Jam Backlog
+
+- [ ] Custom song submission (player uploads audio → Replicate API pipeline → chart generated)
+- [ ] Leaderboard (Vercel KV / Supabase)
 - [ ] Mobile touch lane support
-- [ ] Custom song upload (user provides MIDI + audio)
 - [ ] Visual themes / skin system
-- [ ] Practice mode (slow down note speed)
-- [ ] MIDI import from URL
+- [ ] Practice mode (slow note speed)

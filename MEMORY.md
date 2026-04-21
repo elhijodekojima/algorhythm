@@ -48,6 +48,13 @@
 - **Reason**: Creating and garbage-collecting Three.js meshes during gameplay causes frame drops. A pool of ~50 pre-created note objects covers most charts without allocation.
 - **Status**: 📋 Planned (Sprint 2)
 
+### ADR-006 — Stem Separation Tool: `audio-separator` over raw Demucs (2026-04-21)
+- **Decision**: Use [`python-audio-separator`](https://github.com/nomadkaraoke/python-audio-separator) as the primary stem separation tool, not plain Demucs `htdemucs_6s`.
+- **Reason**: `audio-separator` wraps both Demucs and the full UVR/MDX-Net ONNX model library in one clean Python API. MDX-Net models consistently outperform `htdemucs_6s` on piano isolation. ONNX runtime means no CUDA required. Demucs `htdemucs_6s` produces audible "watery" artifacts on the piano stem (acceptable for transcription, not ideal). Spleeter ruled out — abandoned, TensorFlow 1.x dependency.
+- **Model sequence for our pipeline**: `MDX-Net Inst HQ` (remove vocals) → `UVR-MDX-NET Piano` (isolate piano) → `Basic Pitch` (audio → MIDI).
+- **Future custom song submission**: Replicate API (MVP) or Modal.com (long-term). See `STACK.md` for full architecture.
+- **Status**: ✅ Accepted
+
 ---
 
 ## Open Problems & Planned Solutions
