@@ -1,29 +1,26 @@
 // @module src/main.ts
-// Entry point — wires renderer, scene, loop, input, highway, notes, synth, and HUD.
-// Sprint 2-4: Song-Test fully playable with synth audio, scoring, life bar, progress.
+// Game orchestrator — wires FSM, UIManager, Three.js, audio, and gameplay loop.
 
-import { Renderer } from '@gfx/renderer';
+import { Renderer }           from '@gfx/renderer';
 import { createScene, createCamera } from '@gfx/scene';
-import { GameLoop } from '@core/GameLoop';
-import { InputManager } from '@core/InputManager';
-import { NoteHighway } from '@entities/NoteHighway';
-import { NotePool } from '@entities/NotePool';
-import { SynthEngine } from '@audio/SynthEngine';
-import { ScoreManager } from '@state/ScoreManager';
-import { type INoteEvent, HIT_WINDOW_SECONDS, type Difficulty } from '@midi/noteTypes';
-
-// ── DOM refs ──────────────────────────────────────────────────────────────────
-const canvas      = document.getElementById('game-canvas') as HTMLCanvasElement;
-const splash      = document.getElementById('splash') as HTMLDivElement;
-const hudScore    = document.getElementById('hud-score') as HTMLDivElement;
-const hudCombo    = document.getElementById('hud-combo') as HTMLDivElement;
-const hudFeedback = document.getElementById('hud-feedback') as HTMLDivElement;
-const hudSong     = document.getElementById('hud-song') as HTMLDivElement;
-const hudProgress = document.getElementById('hud-progress-fill') as HTMLDivElement;
-const hudLife     = document.getElementById('hud-life-fill') as HTMLDivElement;
-const hudLifeBar  = document.getElementById('hud-life-bar') as HTMLDivElement;
+import { GameLoop }           from '@core/GameLoop';
+import { InputManager }       from '@core/InputManager';
+import { NoteHighway }        from '@entities/NoteHighway';
+import { NotePool }           from '@entities/NotePool';
+import { SynthEngine }        from '@audio/SynthEngine';
+import { ScoreManager }       from '@state/ScoreManager';
+import { GameStateMachine }   from '@state/GameStateMachine';
+import { UIManager }          from '@ui/UIManager';
+import { getSong, markCompleted } from '@ui/songs';
+import {
+  type INoteEvent,
+  HIT_WINDOW_SECONDS,
+  type Difficulty,
+} from '@midi/noteTypes';
+import type { ISongMeta } from '@ui/songs';
 
 // ── Three.js core ─────────────────────────────────────────────────────────────
+const canvas   = document.getElementById('game-canvas') as HTMLCanvasElement;
 const renderer = new Renderer({ canvas });
 const scene    = createScene();
 const camera   = createCamera();
@@ -34,122 +31,189 @@ const highway  = new NoteHighway(scene);
 const notePool = new NotePool(scene);
 const synth    = new SynthEngine();
 
-// ── Game state ────────────────────────────────────────────────────────────────
-let chart: INoteEvent[]    = [];
-let totalDuration          = 72;
+// ── State ─────────────────────────────────────────────────────────────────────
+const fsm = new GameStateMachine();
+
+// ── UI ────────────────────────────────────────────────────────────────────────
+const ui = new UIManager({
+  onStartTestSong() { void _startSong(getSong('song-test'), 'easy'); },
+  onSongChosen(song: ISongMeta)     { fsm.toDifficultySelect(song); },
+  onDifficultyChosen(diff: Difficulty) { void _startSong(fsm.context.song!, diff); },
+  onRetry()      { void _startSong(fsm.context.song!, fsm.context.difficulty!); },
+  onMainMenu()   { _stopSong(); fsm.toMainMenu(); },
+  onSongSelect() { _stopSong(); fsm.toSongSelect(); },
+  onResume()     { fsm.toResumed(); },
+  onVolumeChange(v: number) { synth.setMasterVolume(v); },
+  onOffsetChange(_ms: number){ /* offset wired in future when AudioEngine is used */ },
+});
+
+fsm.on((state, ctx) => ui.onStateChange(state, ctx));
+
+// ── Gameplay state ────────────────────────────────────────────────────────────
+let chart: INoteEvent[]  = [];
+let totalDuration        = 72;
 let score: ScoreManager | null = null;
-let songTime               = 0;
-let playing                = false;
-/** Index of the next note to check for hits/misses */
-let hitCheckIdx            = 0;
-/** Index of the next note to spawn into the pool */
-let spawnIdx               = 0;
-const hitNoteIndices       = new Set<number>();
-const difficulty: Difficulty = 'easy';
+let songTime             = 0;
+let hitCheckIdx          = 0;
+let spawnIdx             = 0;
+const hitNoteSet         = new Set<number>();
+let _songStartCtxTime    = 0;
+
+// ── HUD DOM refs ──────────────────────────────────────────────────────────────
+const hudScore    = document.getElementById('hud-score')         as HTMLDivElement;
+const hudCombo    = document.getElementById('hud-combo')         as HTMLDivElement;
+const hudFeedback = document.getElementById('hud-feedback')      as HTMLDivElement;
+const hudSong     = document.getElementById('hud-song')          as HTMLDivElement;
+const hudDiff     = document.getElementById('hud-difficulty')    as HTMLDivElement;
+const hudProgress = document.getElementById('hud-progress-fill') as HTMLDivElement;
+const hudLife     = document.getElementById('hud-life-fill')     as HTMLDivElement;
+const hudLifeBar  = document.getElementById('hud-life-bar')      as HTMLDivElement;
+let feedbackTimer = 0;
+
+// ── Volume/Offset slider live labels ─────────────────────────────────────────
+const volSlider = document.getElementById('opt-volume') as HTMLInputElement;
+const volLabel  = document.getElementById('opt-vol-value') as HTMLSpanElement;
+volSlider?.addEventListener('input', () => { volLabel.textContent = `${volSlider.value}%`; });
 
 // ── Chart loader ──────────────────────────────────────────────────────────────
-async function loadTestChart(): Promise<void> {
-  const res  = await fetch('/charts/song-test.json');
-  const data = await res.json() as Array<{ notes: INoteEvent[]; title: string; totalDuration: number }>;
-  const song = data[0]!;
-  chart         = song.notes;
-  totalDuration = song.totalDuration;
-  hudSong.textContent = `▶ ${song.title}`;
+async function _loadChart(song: ISongMeta): Promise<void> {
+  const res  = await fetch(song.chartPath);
+  const data = await res.json() as Array<{ notes: INoteEvent[]; totalDuration?: number }>;
+  chart         = data[0]?.notes ?? [];
+  totalDuration = data[0]?.totalDuration ?? song.duration;
 }
 
-// ── Feedback HUD ──────────────────────────────────────────────────────────────
-let feedbackTimer = 0;
-function showFeedback(text: string, color: string): void {
+// ── Countdown helper ──────────────────────────────────────────────────────────
+async function _runCountdown(): Promise<void> {
+  for (const tick of [3, 2, 1]) {
+    ui.showCountdownTick(tick);
+    await _sleep(900);
+  }
+  ui.showCountdownTick('GO!');
+  await _sleep(600);
+  ui.hideCountdown();
+}
+
+function _sleep(ms: number): Promise<void> {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+// ── Start / Stop song ─────────────────────────────────────────────────────────
+async function _startSong(song: ISongMeta, diff: Difficulty): Promise<void> {
+  _stopSong();
+
+  // Load chart
+  try { await _loadChart(song); }
+  catch { console.error('Failed to load chart:', song.chartPath); fsm.toMainMenu(); return; }
+
+  // Set up score
+  score        = new ScoreManager(diff);
+  hitCheckIdx  = 0;
+  spawnIdx     = 0;
+  songTime     = 0;
+  hitNoteSet.clear();
+
+  // HUD labels
+  hudSong.textContent  = `▶ ${song.title}`;
+  hudDiff.textContent  = diff.toUpperCase();
+  _updateHUD();
+  ui.showHUD(false);
+
+  // Countdown
+  fsm.toCountdown(diff);
+  await _runCountdown();
+
+  // Resume AudioContext
+  if (synth.audioContext.state === 'suspended') await synth.audioContext.resume();
+
+  // For song-test: use SynthEngine as clock + schedule tones
+  _songStartCtxTime = synth.audioContext.currentTime;
+  synth.scheduleFromChart(chart, _songStartCtxTime);
+
+  fsm.toPlaying();
+  _playing = true;
+}
+
+function _stopSong(): void {
+  _playing = false;
+  synth.cancelScheduled();
+  notePool.active.length = 0; // clear visual notes
+}
+
+// ── Game loop control flag ────────────────────────────────────────────────────
+let _playing = false;
+
+// ── HUD update ────────────────────────────────────────────────────────────────
+function _updateHUD(): void {
+  if (!score) return;
+  hudScore.textContent = String(score.score).padStart(6, '0');
+  hudCombo.textContent = `COMBO ×${score.multiplier}`;
+  if (score.combo > 0) {
+    hudCombo.classList.add('pop');
+    setTimeout(() => hudCombo.classList.remove('pop'), 180);
+  }
+  const life = score.life;
+  hudLife.style.height = `${life}%`;
+  hudLifeBar.dataset['state'] = life > 66 ? 'good' : life > 33 ? 'mid' : 'danger';
+}
+
+// ── Feedback flash ────────────────────────────────────────────────────────────
+function _feedback(text: string, color: string): void {
   hudFeedback.textContent  = text;
   hudFeedback.style.color   = color;
   hudFeedback.style.opacity = '1';
   feedbackTimer = 0.7;
 }
 
-// ── HUD update ─────────────────────────────────────────────────────────────────
-function updateHUD(): void {
-  if (!score) return;
+// ── Hit / Miss detection ──────────────────────────────────────────────────────
+function _detectHits(lanes: number[]): void {
+  if (lanes.length === 0 || !score) return;
 
-  hudScore.textContent = String(score.score).padStart(6, '0');
-  hudCombo.textContent = `COMBO ×${score.multiplier}`;
-  if (score.combo > 0) {
-    hudCombo.classList.add('pop');
-    setTimeout(() => hudCombo.classList.remove('pop'), 200);
-  }
-
-  // Life bar — color from GDD §3.4
-  const life = score.life;
-  hudLife.style.height = `${life}%`;
-  if (life > 66) {
-    hudLifeBar.dataset['state'] = 'good';
-  } else if (life > 33) {
-    hudLifeBar.dataset['state'] = 'mid';
-  } else {
-    hudLifeBar.dataset['state'] = 'danger';
-  }
-}
-
-// ── Hit detection ─────────────────────────────────────────────────────────────
-function detectHits(pressedLanes: number[]): void {
-  if (pressedLanes.length === 0 || !score) return;
-
-  // Search in window around current songTime
   for (let i = hitCheckIdx; i < chart.length; i++) {
     const note = chart[i]!;
     const dt   = note.time - songTime;
-    if (dt >  HIT_WINDOW_SECONDS) break;   // too far ahead
-    if (dt < -HIT_WINDOW_SECONDS) continue; // too late — will be caught by checkOmitted
-    if (hitNoteIndices.has(i)) continue;
+    if (dt >  HIT_WINDOW_SECONDS) break;
+    if (dt < -HIT_WINDOW_SECONDS) continue;
+    if (hitNoteSet.has(i)) continue;
 
     const noteLanes = [...note.lanes].sort((a, b) => a - b);
-    const pressed   = [...pressedLanes].sort((a, b) => a - b);
-    const matches   = noteLanes.length === pressed.length &&
-      noteLanes.every((l, idx) => l === pressed[idx]);
-
-    if (matches) {
-      hitNoteIndices.add(i);
+    const pressed   = [...lanes].sort((a, b) => a - b);
+    if (noteLanes.length === pressed.length && noteLanes.every((l, x) => l === pressed[x])) {
+      hitNoteSet.add(i);
       const pts = note.lanes.length > 1
         ? score.registerChordHit(note.lanes.length)
         : score.registerHit();
-
-      note.lanes.forEach(l => highway.flashLane(l));
-      note.lanes.forEach(l => synth.playLaneTone(l, Math.max(0.15, note.duration)));
-
-      showFeedback(`+${pts}`, '#b36bff');
-      updateHUD();
+      note.lanes.forEach(l => { highway.flashLane(l); synth.playLaneTone(l, Math.max(0.15, note.duration)); });
+      _feedback(`+${pts}`, '#b36bff');
+      _updateHUD();
       return;
     }
   }
 
-  // No matching note → input extra miss (GDD §3.4 type 1)
-  if (score) {
-    pressedLanes.forEach(l => { synth.playMissTone(l); highway.flashLaneMiss(l); });
-    score.registerMiss();
-    showFeedback('MISS', '#ff3c6e');
-    updateHUD();
-  }
+  // Input extra miss
+  lanes.forEach(l => { synth.playMissTone(l); highway.flashLaneMiss(l); });
+  score.registerMiss();
+  _feedback('MISS', '#ff3c6e');
+  _updateHUD();
 }
 
-/** Input omitted miss — note passed hit line unplayed (GDD §3.4 type 2) */
-function checkOmittedNotes(): void {
+function _checkOmitted(): void {
   if (!score) return;
   while (hitCheckIdx < chart.length) {
     const note = chart[hitCheckIdx]!;
-    // Note is definitively past the hit window
     if (note.time - songTime > -HIT_WINDOW_SECONDS) break;
-    if (!hitNoteIndices.has(hitCheckIdx)) {
+    if (!hitNoteSet.has(hitCheckIdx)) {
       score.registerMiss();
       notePool.markMissed(note);
       note.lanes.forEach(l => highway.flashLaneMiss(l));
-      showFeedback('MISS', '#ff3c6e');
-      updateHUD();
+      _feedback('MISS', '#ff3c6e');
+      _updateHUD();
     }
     hitCheckIdx++;
   }
 }
 
-/** Spawn notes into the 3D pool 3.5 seconds before they're due */
-function spawnUpcomingNotes(): void {
+function _spawnNotes(): void {
   while (spawnIdx < chart.length) {
     const note = chart[spawnIdx]!;
     if (note.time - songTime > 3.5) break;
@@ -158,24 +222,29 @@ function spawnUpcomingNotes(): void {
   }
 }
 
-// ── Game loop ─────────────────────────────────────────────────────────────────
+// ── ESC key — pause toggle ────────────────────────────────────────────────────
+window.addEventListener('keydown', (e: KeyboardEvent) => {
+  if (e.code === 'Escape') {
+    if (fsm.state === 'PLAYING') { fsm.toPaused(); }
+    else if (fsm.state === 'PAUSED') { fsm.toResumed(); }
+  }
+});
+
+// ── Main game loop ────────────────────────────────────────────────────────────
 const loop = new GameLoop({
   update(delta: number): void {
-    if (playing) {
+    if (_playing && fsm.state === 'PLAYING' && score) {
       songTime = synth.audioContext.currentTime - _songStartCtxTime;
 
-      spawnUpcomingNotes();
-      checkOmittedNotes();
-
-      const pressedLanes = input.getJustPressedLanes();
-      detectHits(pressedLanes);
+      _spawnNotes();
+      _checkOmitted();
+      _detectHits(input.getJustPressedLanes());
 
       notePool.update(songTime, delta);
       highway.update(delta);
 
-      // Progress bar (GDD §3.6)
-      const progress = Math.min(100, (songTime / totalDuration) * 100);
-      hudProgress.style.width = `${progress}%`;
+      // Progress bar
+      hudProgress.style.width = `${Math.min(100, (songTime / totalDuration) * 100)}%`;
 
       // Feedback fade
       if (feedbackTimer > 0) {
@@ -183,16 +252,23 @@ const loop = new GameLoop({
         if (feedbackTimer <= 0) hudFeedback.style.opacity = '0';
       }
 
-      // Song end
+      // Song complete
       if (songTime >= totalDuration) {
-        playing = false;
-        showFeedback('COMPLETE!', '#ffd166');
+        _playing = false;
+        const s = score;
+        // Mark song as completed in localStorage
+        if (fsm.context.song) markCompleted(fsm.context.song.id);
+        fsm.toResults(s.score, s.accuracy, s.stars);
+        return;
       }
 
-      // Game over (GDD §3.4)
-      if (score?.isGameOver) {
-        playing = false;
-        showFeedback('GAME OVER', '#ff3c6e');
+      // Game Over
+      if (score.isGameOver) {
+        _playing = false;
+        const s          = score;
+        const progress   = (songTime / totalDuration) * 100;
+        fsm.toGameOver(s.score, s.accuracy, progress);
+        return;
       }
     }
     input.flush();
@@ -202,41 +278,7 @@ const loop = new GameLoop({
   },
 });
 
-let _songStartCtxTime = 0;
-
-// ── Start test song ───────────────────────────────────────────────────────────
-async function startTestSong(): Promise<void> {
-  await loadTestChart();
-
-  score         = new ScoreManager(difficulty);
-  hitCheckIdx   = 0;
-  spawnIdx      = 0;
-  songTime      = 0;
-  hitNoteIndices.clear();
-  updateHUD();
-
-  // Resume AudioContext (requires user gesture)
-  if (synth.audioContext.state === 'suspended') {
-    await synth.audioContext.resume();
-  }
-
-  // Schedule all chart notes as synth tones (Song-Test backing track)
-  _songStartCtxTime = synth.audioContext.currentTime;
-  synth.scheduleFromChart(chart, _songStartCtxTime);
-
-  playing = true;
-
-  // Fade out splash
-  splash.style.transition = 'opacity 0.5s ease';
-  splash.style.opacity    = '0';
-  setTimeout(() => { splash.style.display = 'none'; }, 500);
-}
-
-// Warm up Three.js before first key
+// ── Boot ──────────────────────────────────────────────────────────────────────
 loop.start();
-
-window.addEventListener('keydown', () => {
-  if (splash.style.display !== 'none' && splash.style.opacity !== '0') {
-    startTestSong().catch(err => console.error(err));
-  }
-}, { once: true });
+// Initial state emit to set up main menu correctly
+fsm.toMainMenu();

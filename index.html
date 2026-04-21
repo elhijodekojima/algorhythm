@@ -8,179 +8,509 @@
 
     <!-- VIBE JAM 2026 — REQUIRED WIDGET — DO NOT REMOVE -->
     <script async src="https://vibej.am/2026/widget.js"></script>
-    <!-- END VIBE JAM 2026 WIDGET -->
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet" />
 
     <style>
-      /* ── Reset ───────────────────────────────────────────────── */
+      /* ─── RESET ──────────────────────────────────────────────────────── */
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
       :root {
         --bg-void:        #05040f;
+        --bg-panel:       rgba(8, 6, 24, 0.92);
         --neon-primary:   #b36bff;
         --neon-secondary: #00f5ff;
         --neon-danger:    #ff3c6e;
         --neon-gold:      #ffd166;
+        --neon-green:     #4ade80;
         --text-primary:   #e8e0ff;
         --text-muted:     #6b5fa8;
+        --border-subtle:  rgba(179,107,255,0.2);
       }
 
-      html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg-void); color: var(--text-primary); font-family: 'Space Grotesk', sans-serif; }
+      html, body {
+        width: 100%; height: 100%; overflow: hidden;
+        background: var(--bg-void);
+        color: var(--text-primary);
+        font-family: 'Space Grotesk', sans-serif;
+      }
 
-      /* ── Canvas ──────────────────────────────────────────────── */
-      #game-canvas { display: block; position: fixed; top: 0; left: 0; width: 100%; height: 100%; }
+      /* ─── CANVAS ─────────────────────────────────────────────────────── */
+      #game-canvas {
+        display: block; position: fixed; top: 0; left: 0;
+        width: 100%; height: 100%; z-index: 0;
+      }
 
-      /* ── SPLASH / Main Menu ──────────────────────────────────── */
-      #splash {
-        position: fixed; inset: 0; display: flex; flex-direction: column;
+      /* ─── SHARED OVERLAY ─────────────────────────────────────────────── */
+      .overlay {
+        position: fixed; inset: 0; z-index: 20;
+        display: none; flex-direction: column;
         align-items: center; justify-content: center;
-        background: var(--bg-void); z-index: 100; gap: 12px;
+        opacity: 0; transition: opacity 0.25s ease;
       }
-      #splash h1 {
-        font-family: 'Orbitron', sans-serif;
-        font-size: clamp(2.5rem, 8vw, 5rem); font-weight: 900;
-        color: var(--neon-primary);
-        text-shadow: 0 0 20px var(--neon-primary), 0 0 60px var(--neon-primary), 0 0 120px var(--neon-primary);
-        letter-spacing: 0.1em;
-      }
-      #splash .subtitle { color: var(--text-muted); font-size: 1rem; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 32px; }
+      .overlay.opaque { background: var(--bg-void); }
+      .overlay.glass  { background: rgba(5,4,15,0.82); backdrop-filter: blur(12px); }
 
-      /* Menu buttons */
-      .menu-btn {
-        font-family: 'Orbitron', sans-serif; font-size: 1rem; font-weight: 700;
-        padding: 14px 48px; border: 2px solid var(--neon-primary);
+      .overlay[style*="flex"] { opacity: 1; }
+
+      /* Title stamp */
+      .game-title {
+        font-family: 'Orbitron', sans-serif;
+        font-size: clamp(2rem, 7vw, 4.5rem); font-weight: 900;
+        color: var(--neon-primary);
+        text-shadow: 0 0 20px var(--neon-primary), 0 0 60px var(--neon-primary);
+        letter-spacing: 0.08em; margin-bottom: 6px;
+      }
+      .game-sub {
+        color: var(--text-muted); font-size: 0.9rem;
+        letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 40px;
+      }
+
+      /* ─── BUTTONS ────────────────────────────────────────────────────── */
+      .btn {
+        font-family: 'Orbitron', sans-serif; font-size: 0.9rem; font-weight: 700;
+        padding: 13px 40px; border: 2px solid var(--neon-primary);
         background: transparent; color: var(--neon-primary);
         letter-spacing: 0.1em; text-transform: uppercase;
-        cursor: pointer; transition: all 0.2s ease; position: relative; overflow: hidden;
+        cursor: pointer; transition: all 0.18s ease; margin: 6px;
       }
-      .menu-btn:hover { background: var(--neon-primary); color: var(--bg-void); box-shadow: 0 0 24px var(--neon-primary); }
-      .menu-btn.secondary { border-color: var(--text-muted); color: var(--text-muted); font-size: 0.85rem; }
-      .menu-btn.secondary:hover { background: var(--text-muted); color: var(--bg-void); box-shadow: none; }
+      .btn:hover { background: var(--neon-primary); color: var(--bg-void); box-shadow: 0 0 24px var(--neon-primary); }
+      .btn.sm { font-size: 0.75rem; padding: 10px 28px; }
+      .btn.ghost { border-color: var(--text-muted); color: var(--text-muted); }
+      .btn.ghost:hover { background: var(--text-muted); color: var(--bg-void); box-shadow: none; }
+      .btn.danger { border-color: var(--neon-danger); color: var(--neon-danger); }
+      .btn.danger:hover { background: var(--neon-danger); color: #fff; }
 
-      /* Key hint */
-      .key-hint { margin-top: 24px; font-size: 0.8rem; color: var(--text-muted); letter-spacing: 0.05em; }
-      .key-hint kbd { background: #1a1040; border: 1px solid var(--text-muted); border-radius: 4px; padding: 2px 8px; font-family: monospace; }
+      /* ─── SECTION LABEL ──────────────────────────────────────────────── */
+      .section-label {
+        font-family: 'Orbitron', sans-serif; font-size: 0.65rem;
+        letter-spacing: 0.2em; color: var(--text-muted); text-transform: uppercase;
+        margin-bottom: 20px;
+      }
 
-      /* ── HUD overlay ─────────────────────────────────────────── */
+      /* ═══════════════════════════════════════════════════════════════════
+         MAIN MENU
+      ═══════════════════════════════════════════════════════════════════ */
+      #panel-main-menu { gap: 0; }
+
+      .menu-actions { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 8px; }
+      .menu-row { display: flex; gap: 10px; }
+
+      .key-hint {
+        margin-top: 28px; font-size: 0.75rem; color: var(--text-muted);
+        letter-spacing: 0.05em;
+      }
+      .key-hint kbd {
+        background: #1a1040; border: 1px solid var(--text-muted);
+        border-radius: 4px; padding: 1px 8px; font-family: monospace;
+      }
+
+      /* ═══════════════════════════════════════════════════════════════════
+         SONG SELECT
+      ═══════════════════════════════════════════════════════════════════ */
+      #panel-song-select { gap: 0; }
+
+      .panel-box {
+        background: var(--bg-panel); border: 1px solid var(--border-subtle);
+        padding: 32px 36px; min-width: 520px; max-width: 600px;
+        display: flex; flex-direction: column; align-items: stretch;
+      }
+
+      #song-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+
+      .song-item {
+        display: grid; grid-template-columns: 80px 1fr auto;
+        grid-template-rows: auto auto; column-gap: 16px;
+        padding: 16px 20px; background: rgba(179,107,255,0.04);
+        border: 1px solid var(--border-subtle);
+        cursor: pointer; transition: all 0.18s ease; text-align: left;
+        color: var(--text-primary); font-family: 'Space Grotesk', sans-serif;
+      }
+      .song-item.unlocked:hover { background: rgba(179,107,255,0.12); border-color: var(--neon-primary); box-shadow: 0 0 16px rgba(179,107,255,0.2); }
+      .song-item.locked { opacity: 0.45; cursor: not-allowed; }
+
+      .session-num {
+        grid-column: 1; grid-row: 1;
+        font-family: 'Orbitron', sans-serif; font-size: 0.65rem;
+        color: var(--text-muted); letter-spacing: 0.1em; align-self: center;
+      }
+      .song-title {
+        grid-column: 2; grid-row: 1;
+        font-family: 'Orbitron', sans-serif; font-size: 0.95rem; font-weight: 700;
+        color: var(--text-primary);
+      }
+      .song-meta {
+        grid-column: 3; grid-row: 1;
+        font-size: 0.75rem; color: var(--text-muted); align-self: center;
+        white-space: nowrap;
+      }
+      .lock-hint {
+        grid-column: 2 / 4; grid-row: 2;
+        font-size: 0.72rem; color: var(--neon-danger); margin-top: 4px;
+      }
+
+      /* ═══════════════════════════════════════════════════════════════════
+         DIFFICULTY SELECT
+      ═══════════════════════════════════════════════════════════════════ */
+      #panel-difficulty-select { gap: 0; }
+
+      #diff-song-title {
+        font-family: 'Orbitron', sans-serif; font-size: 1.4rem; font-weight: 900;
+        color: var(--neon-primary); text-align: center; margin-bottom: 32px;
+        text-shadow: 0 0 16px var(--neon-primary);
+      }
+
+      .diff-btns { display: flex; gap: 16px; margin-bottom: 28px; }
+
+      .diff-btn {
+        font-family: 'Orbitron', sans-serif; font-size: 0.85rem; font-weight: 700;
+        padding: 20px 32px; border: 2px solid var(--border-subtle);
+        background: transparent; color: var(--text-muted);
+        letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer;
+        transition: all 0.18s ease; display: flex; flex-direction: column; align-items: center; gap: 6px;
+      }
+      .diff-btn small { font-size: 0.6rem; font-family: 'Space Grotesk', sans-serif; letter-spacing: 0.05em; }
+      .diff-btn.easy:hover   { border-color: var(--neon-green);   color: var(--neon-green);   box-shadow: 0 0 20px rgba(74,222,128,0.3); }
+      .diff-btn.medium:hover { border-color: var(--neon-secondary); color: var(--neon-secondary); box-shadow: 0 0 20px rgba(0,245,255,0.3); }
+      .diff-btn.expert:hover { border-color: var(--neon-danger);  color: var(--neon-danger);  box-shadow: 0 0 20px rgba(255,60,110,0.3); }
+
+      /* ═══════════════════════════════════════════════════════════════════
+         COUNTDOWN
+      ═══════════════════════════════════════════════════════════════════ */
+      #panel-countdown { background: transparent; pointer-events: none; }
+
+      #countdown-number {
+        font-family: 'Orbitron', sans-serif; font-size: clamp(6rem, 20vw, 12rem);
+        font-weight: 900; color: var(--neon-primary);
+        text-shadow: 0 0 40px var(--neon-primary), 0 0 120px var(--neon-primary);
+        opacity: 1; transition: opacity 0.2s ease;
+      }
+      #countdown-number.pop {
+        animation: count-pop 0.7s cubic-bezier(.34,1.56,.64,1) forwards;
+      }
+      @keyframes count-pop {
+        0%   { transform: scale(1.8); opacity: 0; }
+        40%  { transform: scale(1.0); opacity: 1; }
+        80%  { transform: scale(1.0); opacity: 1; }
+        100% { transform: scale(0.8); opacity: 0; }
+      }
+
+      /* ═══════════════════════════════════════════════════════════════════
+         PAUSE MENU
+      ═══════════════════════════════════════════════════════════════════ */
+      #panel-pause .panel-box { align-items: center; }
+      .pause-title {
+        font-family: 'Orbitron', sans-serif; font-size: 2rem; font-weight: 900;
+        color: var(--neon-secondary); letter-spacing: 0.1em; margin-bottom: 32px;
+        text-shadow: 0 0 16px var(--neon-secondary);
+      }
+
+      /* ═══════════════════════════════════════════════════════════════════
+         RESULTS
+      ═══════════════════════════════════════════════════════════════════ */
+      #panel-results .panel-box { align-items: center; gap: 6px; }
+
+      .results-title {
+        font-family: 'Orbitron', sans-serif; font-size: 1.8rem; font-weight: 900;
+        color: var(--neon-primary); letter-spacing: 0.1em; margin-bottom: 8px;
+      }
+      #results-song-name { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px; }
+
+      .results-stars { display: flex; gap: 6px; margin: 16px 0; }
+      .star { font-size: 2rem; transition: color 0.3s ease, text-shadow 0.3s ease; }
+      .star.on  { color: var(--neon-gold); text-shadow: 0 0 12px var(--neon-gold); }
+      .star.off { color: #2a1f4a; }
+
+      .results-stat {
+        display: flex; align-items: center; justify-content: space-between;
+        width: 100%; padding: 12px 0; border-bottom: 1px solid var(--border-subtle);
+        font-size: 0.9rem;
+      }
+      .results-stat label { color: var(--text-muted); letter-spacing: 0.05em; font-size: 0.8rem; }
+      .results-stat value {
+        font-family: 'Orbitron', sans-serif; font-size: 1.2rem;
+        color: var(--neon-primary); font-weight: 700;
+      }
+
+      .results-actions { display: flex; flex-wrap: wrap; justify-content: center; margin-top: 24px; gap: 8px; }
+
+      /* ═══════════════════════════════════════════════════════════════════
+         GAME OVER
+      ═══════════════════════════════════════════════════════════════════ */
+      #panel-game-over .panel-box { align-items: center; }
+      .gameover-title {
+        font-family: 'Orbitron', sans-serif; font-size: 2.5rem; font-weight: 900;
+        color: var(--neon-danger); letter-spacing: 0.1em; margin-bottom: 12px;
+        text-shadow: 0 0 24px var(--neon-danger);
+        animation: flicker 2s ease-in-out infinite;
+      }
+      @keyframes flicker {
+        0%, 92%, 100% { opacity: 1; }
+        94% { opacity: 0.4; }
+        96% { opacity: 1;   }
+        98% { opacity: 0.2; }
+      }
+      #gameover-msg { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 28px; text-align: center; }
+
+      /* ═══════════════════════════════════════════════════════════════════
+         OPTIONS
+      ═══════════════════════════════════════════════════════════════════ */
+      #panel-options .panel-box { gap: 20px; min-width: 400px; }
+      .options-title {
+        font-family: 'Orbitron', sans-serif; font-size: 1.4rem; font-weight: 700;
+        color: var(--neon-secondary); letter-spacing: 0.1em; margin-bottom: 8px;
+      }
+      .opt-row {
+        display: flex; flex-direction: column; gap: 8px;
+        padding-bottom: 20px; border-bottom: 1px solid var(--border-subtle);
+      }
+      .opt-row label {
+        font-size: 0.75rem; color: var(--text-muted);
+        letter-spacing: 0.1em; text-transform: uppercase;
+      }
+      .opt-row .val-display {
+        font-family: 'Orbitron', sans-serif; font-size: 0.85rem; color: var(--neon-primary);
+        text-align: right;
+      }
+      .opt-label-row { display: flex; justify-content: space-between; }
+
+      input[type=range] {
+        -webkit-appearance: none; appearance: none; width: 100%; height: 4px;
+        background: var(--border-subtle); border-radius: 2px; outline: none;
+      }
+      input[type=range]::-webkit-slider-thumb {
+        -webkit-appearance: none; appearance: none;
+        width: 16px; height: 16px; border-radius: 50%;
+        background: var(--neon-primary); cursor: pointer;
+        box-shadow: 0 0 8px var(--neon-primary);
+      }
+
+      /* ═══════════════════════════════════════════════════════════════════
+         HUD
+      ═══════════════════════════════════════════════════════════════════ */
       #hud {
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        pointer-events: none; z-index: 10;
+        pointer-events: none; z-index: 10; opacity: 0;
+        transition: opacity 0.4s ease;
       }
 
-      /* Score */
       #hud-score {
         position: absolute; top: 20px; right: 28px;
         font-family: 'Orbitron', sans-serif; font-size: 2rem; font-weight: 900;
         color: var(--neon-primary); text-shadow: 0 0 12px var(--neon-primary);
-        letter-spacing: 0.05em;
       }
-
-      /* Combo */
       #hud-combo {
-        position: absolute; top: 68px; right: 28px;
+        position: absolute; top: 66px; right: 28px;
         font-family: 'Orbitron', sans-serif; font-size: 1rem; font-weight: 700;
         color: var(--neon-secondary); text-shadow: 0 0 8px var(--neon-secondary);
-        transition: transform 0.2s cubic-bezier(.34,1.56,.64,1);
+        transition: transform 0.15s cubic-bezier(.34,1.56,.64,1);
       }
       #hud-combo.pop { transform: scale(1.4); }
 
-      /* Hit feedback */
       #hud-feedback {
         position: absolute; bottom: 28%; left: 50%; transform: translateX(-50%);
         font-family: 'Orbitron', sans-serif; font-size: 1.6rem; font-weight: 700;
         opacity: 0; transition: opacity 0.1s ease;
         text-shadow: 0 0 16px currentColor; pointer-events: none;
       }
-
-      /* Song name */
       #hud-song {
         position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
-        font-size: 0.8rem; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase;
+        font-size: 0.75rem; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase;
+      }
+      #hud-difficulty {
+        position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+        font-family: 'Orbitron', sans-serif; font-size: 0.7rem; color: var(--text-muted);
+        letter-spacing: 0.15em; text-transform: uppercase;
       }
 
-      /* ── Progress bar (top) ──────────────────────────────────── */
-      #hud-progress {
-        position: absolute; top: 0; left: 0; width: 100%; height: 3px;
-        background: rgba(179,107,255,0.15);
-      }
-      #hud-progress-fill {
-        height: 100%; width: 0%; background: var(--neon-primary);
-        box-shadow: 0 0 8px var(--neon-primary); transition: width 0.1s linear;
-      }
+      /* Progress bar */
+      #hud-progress { position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: rgba(179,107,255,0.12); }
+      #hud-progress-fill { height: 100%; width: 0%; background: var(--neon-primary); box-shadow: 0 0 8px var(--neon-primary); transition: width 0.1s linear; }
 
-      /* ── Life bar (vertical, left side) — GDD §3.4 ──────────── */
+      /* Life bar */
       #hud-life-container {
         position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
-        display: flex; flex-direction: column; align-items: center; gap: 6px;
+        display: flex; flex-direction: column; align-items: center; gap: 8px;
       }
-      #hud-life-label {
-        font-family: 'Orbitron', sans-serif; font-size: 0.6rem; letter-spacing: 0.1em;
-        color: var(--text-muted); writing-mode: vertical-rl; text-orientation: mixed;
-        transform: rotate(180deg);
-      }
-      #hud-life-bar {
-        width: 12px; height: 200px; background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(179,107,255,0.3); border-radius: 6px;
-        position: relative; overflow: hidden;
-      }
+      #hud-life-label { font-family: 'Orbitron', sans-serif; font-size: 0.55rem; letter-spacing: 0.1em; color: var(--text-muted); writing-mode: vertical-rl; transform: rotate(180deg); }
+      #hud-life-bar { width: 12px; height: 200px; background: rgba(255,255,255,0.05); border: 1px solid rgba(179,107,255,0.3); border-radius: 6px; position: relative; overflow: hidden; }
       #hud-life-fill {
-        position: absolute; bottom: 0; left: 0; width: 100%;
-        height: 50%; border-radius: 6px;
-        background: var(--neon-secondary);
-        box-shadow: 0 0 10px var(--neon-secondary);
+        position: absolute; bottom: 0; left: 0; width: 100%; height: 50%;
+        border-radius: 6px; background: var(--neon-secondary); box-shadow: 0 0 10px var(--neon-secondary);
         transition: height 0.15s ease, background 0.3s ease, box-shadow 0.3s ease;
       }
-
-      /* Life bar states (GDD §3.4 color rules) */
-      #hud-life-bar[data-state="good"]   #hud-life-fill { background: #4ade80; box-shadow: 0 0 10px #4ade80; }
+      #hud-life-bar[data-state="good"]   #hud-life-fill { background: var(--neon-green);   box-shadow: 0 0 10px var(--neon-green);   }
       #hud-life-bar[data-state="mid"]    #hud-life-fill { background: var(--neon-secondary); box-shadow: 0 0 10px var(--neon-secondary); }
-      #hud-life-bar[data-state="danger"] #hud-life-fill {
-        background: var(--neon-danger); box-shadow: 0 0 10px var(--neon-danger);
-        animation: blink-danger 0.4s ease-in-out infinite;
-      }
-      @keyframes blink-danger {
-        0%, 100% { opacity: 1; }
-        50%       { opacity: 0.35; }
-      }
+      #hud-life-bar[data-state="danger"] #hud-life-fill { background: var(--neon-danger); box-shadow: 0 0 10px var(--neon-danger); animation: blink-danger 0.4s ease-in-out infinite; }
+      @keyframes blink-danger { 0%, 100% { opacity:1; } 50% { opacity:0.3; } }
     </style>
   </head>
 
   <body>
-    <!-- ── SPLASH / Main Menu ─────────────────────────────────── -->
-    <div id="splash">
-      <h1>ALGORHYTHM</h1>
-      <p class="subtitle">AI-powered rhythm &nbsp;·&nbsp; QWERTY as your piano</p>
-
-      <button id="btn-test-song" class="menu-btn" onclick="document.dispatchEvent(new KeyboardEvent('keydown', {key: ' '})); window.dispatchEvent(new KeyboardEvent('keydown', {code:'Space', key:' '}))">
-        ▶ &nbsp;Play Test Song
-      </button>
-
-      <p class="key-hint">or press any key &nbsp;<kbd>Q–P</kbd>&nbsp; to start</p>
-    </div>
-
-    <!-- ── Three.js canvas ───────────────────────────────────────── -->
     <canvas id="game-canvas"></canvas>
 
-    <!-- ── HUD overlay ───────────────────────────────────────────── -->
+    <!-- ═══════════════════════════════════════════════
+         PANEL: MAIN MENU
+    ═══════════════════════════════════════════════════ -->
+    <div id="panel-main-menu" class="overlay opaque" style="display:flex; opacity:1;">
+      <h1 class="game-title">ALGORHYTHM</h1>
+      <p class="game-sub">AI-powered rhythm &nbsp;·&nbsp; QWERTY as your piano</p>
+
+      <div class="menu-actions">
+        <button id="btn-start-session" class="btn">▶ &nbsp;Start Session</button>
+        <div class="menu-row">
+          <button id="btn-play-test" class="btn ghost sm">⚡ Quick Test</button>
+          <button id="btn-options-main" class="btn ghost sm">⚙ Options</button>
+        </div>
+      </div>
+
+      <p class="key-hint">Press <kbd>Q</kbd>–<kbd>P</kbd> to play &nbsp;·&nbsp; <kbd>ESC</kbd> to pause</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         PANEL: SONG SELECT
+    ═══════════════════════════════════════════════════ -->
+    <div id="panel-song-select" class="overlay glass">
+      <div class="panel-box">
+        <p class="section-label">Select Session</p>
+        <div id="song-list"></div>
+        <button id="btn-back-to-main" class="btn ghost sm">← Back</button>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         PANEL: DIFFICULTY SELECT
+    ═══════════════════════════════════════════════════ -->
+    <div id="panel-difficulty-select" class="overlay glass">
+      <div class="panel-box" style="align-items:center;">
+        <p class="section-label">Choose Difficulty</p>
+        <p id="diff-song-title">Song Title</p>
+
+        <div class="diff-btns">
+          <button id="diff-btn-easy" class="diff-btn easy">
+            EASY
+            <small>6 keys · slow · forgiving</small>
+          </button>
+          <button id="diff-btn-medium" class="diff-btn medium">
+            MEDIUM
+            <small>8 keys · balanced</small>
+          </button>
+          <button id="diff-btn-expert" class="diff-btn expert">
+            EXPERT
+            <small>10 keys · full chart</small>
+          </button>
+        </div>
+
+        <button id="btn-back-from-diff" class="btn ghost sm">← Back to Sessions</button>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         PANEL: COUNTDOWN
+    ═══════════════════════════════════════════════════ -->
+    <div id="panel-countdown" class="overlay">
+      <span id="countdown-number">3</span>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         PANEL: PAUSE
+    ═══════════════════════════════════════════════════ -->
+    <div id="panel-pause" class="overlay glass">
+      <div class="panel-box" style="align-items:center; min-width:340px;">
+        <p class="pause-title">PAUSED</p>
+        <button id="pause-retry"      class="btn" style="width:100%;">↺ &nbsp;Retry</button>
+        <button id="pause-songselect" class="btn ghost" style="width:100%;">♪ &nbsp;Song Select</button>
+        <button id="pause-options"    class="btn ghost" style="width:100%;">⚙ &nbsp;Options</button>
+        <button id="pause-mainmenu"   class="btn ghost sm" style="width:100%; margin-top:8px;">← Main Menu</button>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         PANEL: RESULTS
+    ═══════════════════════════════════════════════════ -->
+    <div id="panel-results" class="overlay glass">
+      <div class="panel-box">
+        <p class="results-title">SESSION COMPLETE</p>
+        <p id="results-song-name">Song Name</p>
+
+        <div id="results-stars" class="results-stars"></div>
+
+        <div class="results-stat">
+          <label>Score</label>
+          <value id="results-score">000000</value>
+        </div>
+        <div class="results-stat">
+          <label>Accuracy</label>
+          <value id="results-accuracy">0.0%</value>
+        </div>
+
+        <div class="results-actions">
+          <button id="results-retry"      class="btn sm">↺ Retry</button>
+          <button id="results-songselect" class="btn sm ghost">♪ Sessions</button>
+          <button id="results-mainmenu"   class="btn sm ghost">← Menu</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         PANEL: GAME OVER
+    ═══════════════════════════════════════════════════ -->
+    <div id="panel-game-over" class="overlay glass">
+      <div class="panel-box" style="align-items:center; min-width:420px;">
+        <p class="gameover-title">GAME OVER</p>
+        <p id="gameover-msg">You failed the session</p>
+
+        <div class="results-actions">
+          <button id="gameover-retry"      class="btn sm">↺ Retry</button>
+          <button id="gameover-songselect" class="btn sm ghost">♪ Sessions</button>
+          <button id="gameover-mainmenu"   class="btn sm ghost">← Menu</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         PANEL: OPTIONS
+    ═══════════════════════════════════════════════════ -->
+    <div id="panel-options" class="overlay glass">
+      <div class="panel-box">
+        <p class="options-title">OPTIONS</p>
+
+        <div class="opt-row">
+          <div class="opt-label-row">
+            <label>Volume</label>
+            <span class="val-display" id="opt-vol-value">100%</span>
+          </div>
+          <input type="range" id="opt-volume" min="0" max="100" value="100" />
+        </div>
+
+        <div class="opt-row">
+          <div class="opt-label-row">
+            <label>Audio Offset</label>
+            <span class="val-display" id="opt-offset-value">0 ms</span>
+          </div>
+          <input type="range" id="opt-offset" min="-200" max="200" value="0" step="5" />
+          <small style="color:var(--text-muted); font-size:0.7rem; margin-top:4px;">Adjust if notes feel early or late. Changes during a session require restart.</small>
+        </div>
+
+        <button id="options-back" class="btn ghost sm" style="align-self:center; margin-top:8px;">← Back</button>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         HUD (visible only during PLAYING)
+    ═══════════════════════════════════════════════════ -->
     <div id="hud">
-      <!-- Top progress bar -->
       <div id="hud-progress"><div id="hud-progress-fill"></div></div>
 
-      <!-- Score + Combo (top right) -->
       <div id="hud-score">000000</div>
       <div id="hud-combo">COMBO ×1</div>
-
-      <!-- Hit feedback -->
+      <div id="hud-difficulty"></div>
       <div id="hud-feedback"></div>
+      <div id="hud-song">Algorhythm</div>
 
-      <!-- Song name (bottom center) -->
-      <div id="hud-song">Algorhythm — Ready</div>
-
-      <!-- Life bar (left side) — GDD §3.4 -->
       <div id="hud-life-container">
         <span id="hud-life-label">LIFE</span>
         <div id="hud-life-bar" data-state="mid">
@@ -189,7 +519,6 @@
       </div>
     </div>
 
-    <!-- Game entry point -->
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

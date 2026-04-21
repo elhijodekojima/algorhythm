@@ -12,6 +12,7 @@ export default defineConfig({
       '@audio': resolve(__dirname, 'src/audio'),
       '@entities': resolve(__dirname, 'src/entities'),
       '@state': resolve(__dirname, 'src/state'),
+      '@ui': resolve(__dirname, 'src/ui'),
     },
   },
   build: {

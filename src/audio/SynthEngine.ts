@@ -80,6 +80,11 @@ export class SynthEngine {
     this._scheduledNotes = [];
   }
 
+  /** Set master gain (0–1). Mirrors Options volume slider. */
+  setMasterVolume(v: number): void {
+    this._masterGain.gain.value = Math.max(0, Math.min(1, v)) * 0.4;
+  }
+
   get audioContext(): AudioContext {
     return this._ctx;
   }

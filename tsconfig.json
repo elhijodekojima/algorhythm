@@ -18,7 +18,8 @@
       "@midi/*": ["src/midi/*"],
       "@audio/*": ["src/audio/*"],
       "@entities/*": ["src/entities/*"],
-      "@state/*": ["src/state/*"]
+      "@state/*": ["src/state/*"],
+      "@ui/*": ["src/ui/*"]
     },
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["vite/client"]
